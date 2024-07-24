@@ -1,4 +1,4 @@
-service: crons
+service: genai-quiz-backend
 frameworkVersion: '3'
 
 plugins:
@@ -24,3 +24,368 @@ provider:
             - logs:CreateLogStream
             - logs:PutLogEvents
           Resource: arn:aws:logs:*:*:*
+  apiGateway:
+    apiKeys:
+      - vote-key
+
+functions:
+  addLink:
+    handler: src/functions/quiz/add-link.handler
+    events:
+      - http: 
+          path: add-link
+          method: post
+          cors: true
+          private: true
+  
+
+resources:
+  Resources:   
+    # User pool 
+    FacialVoteUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UsernameConfiguration:
+          CaseSensitive: false
+        UsernameAttributes:
+          - email
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireUppercase: true
+            RequireSymbols: true
+        Schema:
+          - AttributeDataType: String
+            Mutable: false
+            Required: true
+            Name: email
+            StringAttributeConstraints: 
+              MinLength: '8'
+
+    FacialVoteUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: web
+        UserPoolId: !Ref FacialVoteUserPool
+        ExplicitAuthFlows:
+          - ALLOW_CUSTOM_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+          - ALLOW_USER_SRP_AUTH
+        PreventUserExistenceErrors: ENABLED
+
+    FacialVoteIdentityPool:
+      Type: AWS::Cognito::IdentityPool
+      Properties:
+        IdentityPoolName: facial_vote_upload_identity_pool
+        AllowUnauthenticatedIdentities: true
+        CognitoIdentityProviders:
+          - ClientId:
+              Ref: FacialVoteUserPoolClient
+            ProviderName:
+              Fn::GetAtt: [FacialVoteUserPool, ProviderName]
+    
+    # Cognito roles
+    CognitoIdentityPoolRoles:
+      Type: AWS::Cognito::IdentityPoolRoleAttachment
+      Properties:
+        IdentityPoolId:
+          Ref: FacialVoteIdentityPool
+        Roles:
+          authenticated:
+            Fn::GetAtt: [CognitoAuthRole, Arn]
+          unauthenticated:
+            Fn::GetAtt: [CognitoUnauthRole, Arn]
+    
+    CognitoAuthRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: ${self:service}_appAuthRole
+        Path: /
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Federated: "cognito-identity.amazonaws.com"
+              Action:
+                - "sts:AssumeRoleWithWebIdentity"
+              Condition:
+                StringEquals:
+                  "cognito-identity.amazonaws.com:aud":
+                    Ref: FacialVoteIdentityPool
+                "ForAnyValue:StringLike":
+                  "cognito-identity.amazonaws.com:amr": authenticated
+        Policies:
+          - PolicyName: "CognitoAuthorizedPolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "mobileanalytics:PutEvents"
+                    - "cognito-sync:*"
+                    - "cognito-identity:*"
+                  Resource: "*"
+                - Effect: Allow
+                  Action:
+                    - iot:Connect
+                    - iot:Subscribe
+                    - iot:Receive
+                  Resource: "*"
+                - Effect: "Allow"
+                  Action: 
+                    - "s3:PutObject"
+                    - "s3:GetObject"
+                  Resource: "arn:aws:s3:::${self:custom.uploaded_s3_bucket_name}/public/*"
+                - Effect: "Allow"
+                  Action: 
+                    - "s3:GetObject"
+                    - "s3:ListAllMyBuckets"
+                    - "s3:PutObject"
+                  Resource:
+                  - Fn::Join:
+                    - ''
+                    -
+                      - Fn::GetAtt: [UploadedS3Bucket, Arn]
+                      - '/private/'
+                      - '$'
+                      - '{cognito-identity.amazonaws.com:sub}/*'
+
+    CognitoUnauthRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: ${self:service}_appUnauthRole
+        Path: /
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Federated: "cognito-identity.amazonaws.com"
+              Action:
+                - "sts:AssumeRoleWithWebIdentity"
+              Condition:
+                StringEquals:
+                  "cognito-identity.amazonaws.com:aud":
+                    Ref: FacialVoteIdentityPool
+                "ForAnyValue:StringLike":
+                  "cognito-identity.amazonaws.com:amr": unauthenticated
+        Policies:
+          - PolicyName: "CognitoUnauthorizedPolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "mobileanalytics:PutEvents"
+                    - "cognito-sync:*"
+                    - "cognito-identity:*"
+                  Resource: "*"
+                - Effect: Allow
+                  Action:
+                    - iot:Connect
+                    - iot:Subscribe
+                    - iot:Receive
+                  Resource: "*"
+                - Effect: "Allow"
+                  Action: 
+                    - "s3:PutObject"
+                    - "s3:GetObject"
+                  Resource: "arn:aws:s3:::${self:custom.uploaded_s3_bucket_name}/public/*"
+    
+    # S3 Bucket
+    UploadedS3Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.s3_bucket_name}
+        LifecycleConfiguration:
+          Rules:
+            - Id: DeleteRule
+              Status: Enabled
+              ExpirationInDays: 1
+        CorsConfiguration:
+          CorsRules:
+          - AllowedHeaders: 
+              - '*'
+            AllowedMethods: 
+              - HEAD
+              - GET
+              - PUT
+              - POST
+            AllowedOrigins: 
+              - '*'
+            ExposedHeaders:
+              - x-amz-server-side-encryption
+              - x-amz-request-id
+              - x-amz-id-2
+            MaxAge: 3000
+      
+    #DynamoDB
+    FacialVoteDB:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:custom.dynamodb_name}
+        AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GS1PK
+          AttributeType: S
+        - AttributeName: GS1SK
+          AttributeType: S
+        KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GS1
+            KeySchema:
+              - AttributeName: GS1PK
+                KeyType: HASH
+              - AttributeName: GS1SK
+                KeyType: RANGE
+            Projection:
+              ProjectionType: 'ALL'
+        BillingMode: PAY_PER_REQUEST
+        StreamSpecification:
+          StreamViewType: NEW_IMAGE
+
+    #IoT
+
+    IOTRealtime:
+      Type: "AWS::IoT::Thing"
+      Properties:
+        ThingName: ${self:custom.iot_name}
+        AttributePayload:
+          Attributes: {}
+
+    GetIoTEndpoint:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        FunctionName: ${self:service}-getIoTEndpoint
+        Handler: index.handler
+        Runtime: nodejs16.x
+        Code:
+          ZipFile: |
+            const aws = require("aws-sdk")
+
+            exports.handler = function (event, context) {
+              console.log("REQUEST RECEIVED:\n" + JSON.stringify(event))
+
+              // For Delete requests, immediately send a SUCCESS response.
+              if (event.RequestType == "Delete") {
+                sendResponse(event, context, "SUCCESS")
+                return
+              }
+
+              const iot = new aws.Iot()
+              iot.describeEndpoint({
+                endpointType: "iot:Data-ATS",
+              }, (err, data) => {
+                let responseData, responseStatus
+                if (err) {
+                  responseStatus = "FAILED"
+                  responseData = { Error: "describeEndpoint call failed" }
+                  console.log(responseData.Error + ":\n", err)
+                } else {
+                  responseStatus = "SUCCESS"
+                  responseData = { IotEndpointAddress: data.endpointAddress }
+                  console.log("response data: " + JSON.stringify(responseData))
+                }
+
+                sendResponse(event, context, responseStatus, responseData)
+              })
+            }
+
+            // Send response to the pre-signed S3 URL
+            function sendResponse(event, context, responseStatus, responseData) {
+              let responseBody = JSON.stringify({
+                Status: responseStatus,
+                Reason: `CloudWatch Log Stream: ${context.logStreamName}`,
+                PhysicalResourceId: context.logStreamName,
+                StackId: event.StackId,
+                RequestId: event.RequestId,
+                LogicalResourceId: event.LogicalResourceId,
+                Data: responseData,
+              })
+
+              console.log("RESPONSE BODY:\n", responseBody)
+
+              const https = require("https")
+              const url = require("url")
+
+              let parsedUrl = url.parse(event.ResponseURL)
+              let options = {
+                hostname: parsedUrl.hostname,
+                port: 443,
+                path: parsedUrl.path,
+                method: "PUT",
+                headers: {
+                  "content-type": "",
+                  "content-length": responseBody.length,
+                },
+              }
+
+              console.log("SENDING RESPONSE...\n")
+
+              const request = https.request(options, function (response) {
+                console.log("STATUS: " + response.statusCode)
+                console.log("HEADERS: " + JSON.stringify(response.headers))
+                // Tell AWS Lambda that the function execution is done
+                context.done()
+              })
+
+              request.on("error", function (error) {
+                console.log("sendResponse Error:" + error)
+                // Tell AWS Lambda that the function execution is done
+                context.done()
+              })
+
+              // write data to request body
+              request.write(responseBody)
+              request.end()
+              }
+        Role: !GetAtt LambdaFunctionRoleIoT.Arn
+
+    LambdaFunctionRoleIoT:
+      Type: 'AWS::IAM::Role'
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                  - 'sts:AssumeRole'
+        Policies:
+          - PolicyName: lambda-policy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource: "*"
+                - Effect: Allow
+                  Action:
+                    - iot:DescribeEndpoint
+                  Resource: '*'
+
+    GetIoTEndpointLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: !Ref GetIoTEndpoint
+
+    IotEndpoint:
+      Type: 'Custom::IotEndpoint'
+      Properties:
+        ServiceToken: !GetAtt GetIoTEndpoint.Arn
