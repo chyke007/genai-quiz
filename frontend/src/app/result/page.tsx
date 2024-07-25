@@ -5,8 +5,8 @@ export default async function Page() {
 
   return (
     <>
-      <Navbar/>
-      <HomePage />
+        <Navbar/>
+        <HomePage />
     </>
   );
 }

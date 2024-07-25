@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Button, Tabs, TabsRef, FileInput, Label } from "flowbite-react";
-import { HiClipboardList, HiUserCircle } from "react-icons/hi";
+import { HiClipboardList } from "react-icons/hi";
 import { MdDashboard } from "react-icons/md";
 import Loader from "@/components/Loader";
 import Toaster from "@/components/Toaster";
@@ -82,7 +82,7 @@ export default function Home() {
                 Get Started
               </h3>
               <p className="mb-6 text-md font-normal text-gray-900 sm:text-xl dark:text-white">
-                Generate quiz by uploading file, entering a link or a text
+                Generate quiz by uploading file or entering youtube link
               </p>
             </span>
 
@@ -137,7 +137,7 @@ export default function Home() {
                     )}
                   </Tabs.Item>
 
-                  <Tabs.Item title="PDF" icon={HiUserCircle}>
+                  <Tabs.Item title="PDF" icon={HiClipboardList}>
                     {activeTab === 1 && (
                       <>
                         <span className="font-medium text-gray-800 dark:text-white">
