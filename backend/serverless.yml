@@ -28,6 +28,12 @@ provider:
     apiKeys:
       - vote-key
 
+custom:
+  uploaded_s3_bucket_name: ${self:service}-genaiquiz
+  dynamodb_name: ${self:service}-genaiquiz
+  iot_name: ${self:service}-genaiquiz
+  region: us-east-1
+
 functions:
   addLink:
     handler: src/functions/quiz/add-link.handler
@@ -37,12 +43,31 @@ functions:
           method: post
           cors: true
           private: true
+  triggerSaveFile:
+    handler: src/functions/stepfunctions/trigger-save-file.handler
+    environment:
+      STATE_MACHINE_ARN: ${self:outputs.SaveFileStateMachine.Value}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "states:StartExecution"
+        Resource:
+          - "*"
+    events:
+      - s3:
+          bucket: ${self:custom.uploaded_s3_bucket_name}
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: private/
+          existing: true
+          forceDeploy: true
+  
   
 
 resources:
   Resources:   
     # User pool 
-    FacialVoteUserPool:
+    GenAiQuizUserPool:
       Type: AWS::Cognito::UserPool
       Properties:
         UsernameConfiguration:
@@ -64,34 +89,34 @@ resources:
             StringAttributeConstraints: 
               MinLength: '8'
 
-    FacialVoteUserPoolClient:
+    GenAiQuizUserPoolClient:
       Type: AWS::Cognito::UserPoolClient
       Properties:
         ClientName: web
-        UserPoolId: !Ref FacialVoteUserPool
+        UserPoolId: !Ref GenAiQuizUserPool
         ExplicitAuthFlows:
           - ALLOW_CUSTOM_AUTH
           - ALLOW_REFRESH_TOKEN_AUTH
           - ALLOW_USER_SRP_AUTH
         PreventUserExistenceErrors: ENABLED
 
-    FacialVoteIdentityPool:
+    GenAiQuizIdentityPool:
       Type: AWS::Cognito::IdentityPool
       Properties:
         IdentityPoolName: facial_vote_upload_identity_pool
         AllowUnauthenticatedIdentities: true
         CognitoIdentityProviders:
           - ClientId:
-              Ref: FacialVoteUserPoolClient
+              Ref: GenAiQuizUserPoolClient
             ProviderName:
-              Fn::GetAtt: [FacialVoteUserPool, ProviderName]
+              Fn::GetAtt: [GenAiQuizUserPool, ProviderName]
     
     # Cognito roles
     CognitoIdentityPoolRoles:
       Type: AWS::Cognito::IdentityPoolRoleAttachment
       Properties:
         IdentityPoolId:
-          Ref: FacialVoteIdentityPool
+          Ref: GenAiQuizIdentityPool
         Roles:
           authenticated:
             Fn::GetAtt: [CognitoAuthRole, Arn]
@@ -114,7 +139,7 @@ resources:
               Condition:
                 StringEquals:
                   "cognito-identity.amazonaws.com:aud":
-                    Ref: FacialVoteIdentityPool
+                    Ref: GenAiQuizIdentityPool
                 "ForAnyValue:StringLike":
                   "cognito-identity.amazonaws.com:amr": authenticated
         Policies:
@@ -169,7 +194,7 @@ resources:
               Condition:
                 StringEquals:
                   "cognito-identity.amazonaws.com:aud":
-                    Ref: FacialVoteIdentityPool
+                    Ref: GenAiQuizIdentityPool
                 "ForAnyValue:StringLike":
                   "cognito-identity.amazonaws.com:amr": unauthenticated
         Policies:
@@ -204,7 +229,7 @@ resources:
           Rules:
             - Id: DeleteRule
               Status: Enabled
-              ExpirationInDays: 1
+              ExpirationInDays: 14
         CorsConfiguration:
           CorsRules:
           - AllowedHeaders: 
@@ -223,7 +248,7 @@ resources:
             MaxAge: 3000
       
     #DynamoDB
-    FacialVoteDB:
+    GenAiQuizDB:
       Type: AWS::DynamoDB::Table
       DeletionPolicy: Retain
       Properties:

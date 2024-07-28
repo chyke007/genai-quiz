@@ -57,7 +57,7 @@ export default function ResultPage() {
                       href="/quiz/123"
                       className="font-medium text-cyan-600 hover:underline dark:text-cyan-500"
                     >
-                      Retake
+                      View Source
                     </Link>
                   </Table.Cell>
                 </Table.Row>
