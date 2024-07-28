@@ -1,4 +1,4 @@
-import HomePage from "@/app/home/component/home-page";
+import ResultPage from "@/app/result/component/result-page";
 import Navbar from "@/components/Navbar";
 
 export default async function Page() {
@@ -6,7 +6,7 @@ export default async function Page() {
   return (
     <>
         <Navbar/>
-        <HomePage />
+        <ResultPage />
     </>
   );
 }
