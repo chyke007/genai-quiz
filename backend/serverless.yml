@@ -4,7 +4,6 @@ frameworkVersion: '3'
 plugins:
   - serverless-iam-roles-per-function
   - serverless-step-functions
-  - serverless-pseudo-parameters
   - serverless-dotenv-plugin
 
 useDotenv: true
@@ -26,10 +25,10 @@ provider:
           Resource: arn:aws:logs:*:*:*
   apiGateway:
     apiKeys:
-      - vote-key
+      - genai-key
 
 custom:
-  uploaded_s3_bucket_name: ${self:service}-genaiquiz
+  s3_bucket_name: ${self:service}-genaiquiz
   dynamodb_name: ${self:service}-genaiquiz
   iot_name: ${self:service}-genaiquiz
   region: us-east-1
@@ -43,26 +42,114 @@ functions:
           method: post
           cors: true
           private: true
-  triggerSaveFile:
-    handler: src/functions/stepfunctions/trigger-save-file.handler
+  #  triggerGenerateQuestion:
+  #   handler: src/functions/stepfunctions/trigger-generate-question.handler
+  #   environment:
+  #     STATE_MACHINE_ARN: ${self:outputs.GenerateQuestionStateMachine.Value}
+  #   iamRoleStatements:
+  #     - Effect: Allow
+  #       Action:
+  #         - "states:StartExecution"
+  #       Resource:
+  #         - "*"
+  #   events:
+  #     - s3:
+  #         bucket: ${self:custom.s3_bucket_name}
+  #         event: s3:ObjectCreated:*
+  #         rules:
+  #           - prefix: public/
+  #         existing: true
+  #         forceDeploy: true
+  generateQuestion:
+    handler: src/functions/stepfunctions/generate-question.handler
     environment:
-      STATE_MACHINE_ARN: ${self:outputs.SaveFileStateMachine.Value}
+      IOT_ENDPOINT: !GetAtt IotEndpoint.IotEndpointAddress
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - "states:StartExecution"
+          - bedrock:*
         Resource:
           - "*"
-    events:
-      - s3:
-          bucket: ${self:custom.uploaded_s3_bucket_name}
-          event: s3:ObjectCreated:*
-          rules:
-            - prefix: private/
-          existing: true
-          forceDeploy: true
-  
-  
+      - Effect: Allow
+        Action:
+          - s3:*
+        Resource:
+          - "arn:aws:s3:::${self:custom.s3_bucket_name}/*"
+      - Effect: Allow
+        Action:
+        - iot:*
+        Resource: '*'
+  saveQuestionDynamoDb:
+    handler: src/functions/stepfunctions/save-question-dynamodb.handler
+    environment:
+      DYNAMODB_NAME: ${self:custom.dynamodb_name}
+      IOT_ENDPOINT: !GetAtt IotEndpoint.IotEndpointAddress
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:PutItem
+        Resource:
+          - !GetAtt GenAiQuizDB.Arn
+      - Effect: Allow
+        Action:
+        - iot:*
+        Resource: '*'
+
+# stepFunctions:
+#   stateMachines:
+#     GenerateQuestion:
+#       name: GenerateQuestionMachine
+#       definition:
+#         Comment: "Indexes users photo to Amazon Rekognition and saves metadata to DynamoDb"
+#         StartAt: ValidateFace
+#         States:
+#           ValidateFace:
+#             Type: Task
+#             Resource: !GetAtt validateFace.Arn 
+#             Next: IsFaceValidated
+#           IsFaceValidated:
+#             Type: Choice
+#             Choices:
+#             - Variable: "$.status"
+#               StringEquals: SUCCESS
+#               Next: CheckDuplicate
+#             - Variable: "$.status"
+#               StringEquals: ERROR
+#               Next: Fail
+#           CheckDuplicate:
+#             Type: Task
+#             Resource: !GetAtt checkDuplicate.Arn
+#             Next: IsFaceDuplicate
+#           IsFaceDuplicate:
+#             Type: Choice
+#             Choices:
+#             - Variable: "$.status"
+#               StringEquals: SUCCESS
+#               Next: IndexFace
+#             - Variable: "$.status"
+#               StringEquals: ERROR
+#               Next: Fail
+#           IndexFace:
+#             Type: Task
+#             Resource: !GetAtt generateQuestion.Arn
+#             Next: saveQuestionDynamoDb
+#           saveQuestionDynamoDb:
+#             Type: Task
+#             Resource: !GetAtt saveQuestionDynamoDb.Arn
+#             Next: IsQuestionSaved
+#           IsQuestionSaved:
+#             Type: Choice
+#             Choices:
+#             - Variable: "$.status"
+#               StringEquals: SUCCESS
+#               Next: Success
+#             - Variable: "$.status"
+#               StringEquals: ERROR
+#               Next: Fail
+#           Success:
+#             Type: Succeed
+#           Fail:
+#             Type: Fail
 
 resources:
   Resources:   
@@ -147,36 +234,12 @@ resources:
             PolicyDocument:
               Version: "2012-10-17"
               Statement:
-                - Effect: "Allow"
-                  Action:
-                    - "mobileanalytics:PutEvents"
-                    - "cognito-sync:*"
-                    - "cognito-identity:*"
-                  Resource: "*"
                 - Effect: Allow
                   Action:
                     - iot:Connect
                     - iot:Subscribe
                     - iot:Receive
                   Resource: "*"
-                - Effect: "Allow"
-                  Action: 
-                    - "s3:PutObject"
-                    - "s3:GetObject"
-                  Resource: "arn:aws:s3:::${self:custom.uploaded_s3_bucket_name}/public/*"
-                - Effect: "Allow"
-                  Action: 
-                    - "s3:GetObject"
-                    - "s3:ListAllMyBuckets"
-                    - "s3:PutObject"
-                  Resource:
-                  - Fn::Join:
-                    - ''
-                    -
-                      - Fn::GetAtt: [UploadedS3Bucket, Arn]
-                      - '/private/'
-                      - '$'
-                      - '{cognito-identity.amazonaws.com:sub}/*'
 
     CognitoUnauthRole:
       Type: AWS::IAM::Role
@@ -218,7 +281,7 @@ resources:
                   Action: 
                     - "s3:PutObject"
                     - "s3:GetObject"
-                  Resource: "arn:aws:s3:::${self:custom.uploaded_s3_bucket_name}/public/*"
+                  Resource: "arn:aws:s3:::${self:custom.s3_bucket_name}/public/*"
     
     # S3 Bucket
     UploadedS3Bucket:
@@ -414,3 +477,14 @@ resources:
       Type: 'Custom::IotEndpoint'
       Properties:
         ServiceToken: !GetAtt GetIoTEndpoint.Arn
+
+
+outputs:
+  # GenerateQuestionStateMachine:
+  #     Description: The ARN of the GenerateQuestion state machine
+  #     Value:
+  #       Ref: GenerateQuestionMachine
+  DynamoDbId:
+      Description: The ARN of the DynamoDB
+      Value:
+        Ref: GenAiQuizDB
