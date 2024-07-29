@@ -8,6 +8,11 @@ import Loader from "@/components/Loader";
 import Toaster from "@/components/Toaster";
 import { SourceStages } from "@/utils/types";
 import config from "@/utils/config";
+import {
+  isYouTubeLink,
+  s3UploadUnAuth,
+  replaceSpacesWithHyphens,
+} from "@/utils/helpers";
 
 interface FormElements extends HTMLFormControlsCollection {
   message: HTMLInputElement;
@@ -54,19 +59,34 @@ export default function Home() {
     }
 
     setIsLoading(true);
+
+    console.log(file)
+    try {
+      const fileName = replaceSpacesWithHyphens(
+        `public/${Date.now()}-${file[0].name}`
+      );
+
+      await s3UploadUnAuth(file[0], fileName, (a: any) => {
+        console.log(a);
+      });
+    } catch (e: any) {
+      console.log(e);
+      setToaster({
+        message: e.errors[0].message || "Unknown Error",
+        toaster: toaster.toaster + 1,
+      });
+      emptyContents();
+    }
   };
 
   const handleLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLink(e.target.value);
   };
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
-  };
-
   const handleSubmit = async (event: React.FormEvent) => {
-    setIsLoading(true);
     event.preventDefault()
+    setIsLoading(true);
+    return
   };
   return (
     <main

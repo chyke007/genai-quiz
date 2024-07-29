@@ -190,7 +190,7 @@ resources:
     GenAiQuizIdentityPool:
       Type: AWS::Cognito::IdentityPool
       Properties:
-        IdentityPoolName: facial_vote_upload_identity_pool
+        IdentityPoolName: genai_quiz_identity_pool
         AllowUnauthenticatedIdentities: true
         CognitoIdentityProviders:
           - ClientId:
