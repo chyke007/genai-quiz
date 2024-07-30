@@ -34,34 +34,53 @@ custom:
   region: us-east-1
 
 functions:
-  addLink:
-    handler: src/functions/quiz/add-link.handler
+  forwardYoutubeLink:
+    handler: src/functions/quiz/forward-link.handler
+    environment:
+      STATE_MACHINE_ARN: ${self:outputs.GenerateQuestionStateMachine.Value}
+      IOT_ENDPOINT: !GetAtt IotEndpoint.IotEndpointAddress
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "states:StartExecution"
+        Resource:
+          - "*"
+      - Effect: Allow
+        Action:
+        - iot:*
+        Resource: '*'
     events:
       - http: 
           path: add-link
           method: post
           cors: true
           private: true
-  #  triggerGenerateQuestion:
-  #   handler: src/functions/stepfunctions/trigger-generate-question.handler
-  #   environment:
-  #     STATE_MACHINE_ARN: ${self:outputs.GenerateQuestionStateMachine.Value}
-  #   iamRoleStatements:
-  #     - Effect: Allow
-  #       Action:
-  #         - "states:StartExecution"
-  #       Resource:
-  #         - "*"
-  #   events:
-  #     - s3:
-  #         bucket: ${self:custom.s3_bucket_name}
-  #         event: s3:ObjectCreated:*
-  #         rules:
-  #           - prefix: public/
-  #         existing: true
-  #         forceDeploy: true
-  generateQuestion:
-    handler: src/functions/stepfunctions/generate-question.handler
+  forwardS3Details:
+    handler: src/functions/quiz/forward-document.handler
+    environment:
+      STATE_MACHINE_ARN: ${self:outputs.GenerateQuestionStateMachine.Value}
+      IOT_ENDPOINT: !GetAtt IotEndpoint.IotEndpointAddress
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - "states:StartExecution"
+        Resource:
+          - "*"
+      - Effect: Allow
+        Action:
+        - iot:*
+        Resource: '*'
+    events:
+      - s3:
+          bucket: ${self:custom.s3_bucket_name}
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: public/
+            - suffix: .pdf
+          existing: true
+          forceDeploy: true
+  extractText:
+    handler: src/functions/stepfunctions/extract-pdf-content.handler
     environment:
       IOT_ENDPOINT: !GetAtt IotEndpoint.IotEndpointAddress
     iamRoleStatements:
@@ -72,9 +91,33 @@ functions:
           - "*"
       - Effect: Allow
         Action:
-          - s3:*
+        - iot:*
+        Resource: '*'
+  extractTranscript:
+    handler: src/functions/stepfunctions/extract-youtube-transcript.handler
+    environment:
+      IOT_ENDPOINT: !GetAtt IotEndpoint.IotEndpointAddress
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - bedrock:*
         Resource:
-          - "arn:aws:s3:::${self:custom.s3_bucket_name}/*"
+          - "*"
+      - Effect: Allow
+        Action:
+        - iot:*
+        Resource: '*'
+
+  generateQuestion:
+    handler: src/functions/stepfunctions/generate-question.handler
+    environment:
+      IOT_ENDPOINT: !GetAtt IotEndpoint.IotEndpointAddress
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - bedrock:*
+        Resource:
+          - "*"
       - Effect: Allow
         Action:
         - iot:*
@@ -95,61 +138,55 @@ functions:
         - iot:*
         Resource: '*'
 
-# stepFunctions:
-#   stateMachines:
-#     GenerateQuestion:
-#       name: GenerateQuestionMachine
-#       definition:
-#         Comment: "Indexes users photo to Amazon Rekognition and saves metadata to DynamoDb"
-#         StartAt: ValidateFace
-#         States:
-#           ValidateFace:
-#             Type: Task
-#             Resource: !GetAtt validateFace.Arn 
-#             Next: IsFaceValidated
-#           IsFaceValidated:
-#             Type: Choice
-#             Choices:
-#             - Variable: "$.status"
-#               StringEquals: SUCCESS
-#               Next: CheckDuplicate
-#             - Variable: "$.status"
-#               StringEquals: ERROR
-#               Next: Fail
-#           CheckDuplicate:
-#             Type: Task
-#             Resource: !GetAtt checkDuplicate.Arn
-#             Next: IsFaceDuplicate
-#           IsFaceDuplicate:
-#             Type: Choice
-#             Choices:
-#             - Variable: "$.status"
-#               StringEquals: SUCCESS
-#               Next: IndexFace
-#             - Variable: "$.status"
-#               StringEquals: ERROR
-#               Next: Fail
-#           IndexFace:
-#             Type: Task
-#             Resource: !GetAtt generateQuestion.Arn
-#             Next: saveQuestionDynamoDb
-#           saveQuestionDynamoDb:
-#             Type: Task
-#             Resource: !GetAtt saveQuestionDynamoDb.Arn
-#             Next: IsQuestionSaved
-#           IsQuestionSaved:
-#             Type: Choice
-#             Choices:
-#             - Variable: "$.status"
-#               StringEquals: SUCCESS
-#               Next: Success
-#             - Variable: "$.status"
-#               StringEquals: ERROR
-#               Next: Fail
-#           Success:
-#             Type: Succeed
-#           Fail:
-#             Type: Fail
+stepFunctions:
+  stateMachines:
+    GenerateQuestion:
+      name: GenerateQuestionMachine
+      definition:
+        Comment: "State machine for processing PDF uploads and YouTube links"
+        StartAt: DetermineSource
+        States:
+          DetermineSource:
+            Type: Choice
+            Choices:
+              - Variable: "$.source"
+                StringEquals: "s3"
+                Next: ExtractText
+              - Variable: "$.source"
+                StringEquals: "youtube"
+                Next: ExtractTranscript
+            Default: Fail
+          ExtractText:
+            Type: Task
+            Resource: !GetAtt extractText.Arn
+            Next: GenerateQuestions
+          ExtractTranscript:
+            Type: Task
+            Resource: !GetAtt extractTranscript.Arn
+            Next: GenerateQuestions
+          GenerateQuestions:
+            Type: Task
+            Resource: !GetAtt generateQuestion.Arn
+            Next: SaveQuestionDynamoDb
+          SaveQuestionDynamoDb:
+            Type: Task
+            Resource: !GetAtt saveQuestionDynamoDb.Arn
+            Next: IsQuestionSaved
+          IsQuestionSaved:
+            Type: Choice
+            Choices:
+            - Variable: "$.status"
+              StringEquals: SUCCESS
+              Next: Success
+            - Variable: "$.status"
+              StringEquals: ERROR
+              Next: Fail
+          Success:
+            Type: Succeed
+          Fail:
+            Type: Fail
+            Error: "InvalidSource"
+            Cause: "The provided source is not valid."
 
 resources:
   Resources:   
@@ -480,10 +517,10 @@ resources:
 
 
 outputs:
-  # GenerateQuestionStateMachine:
-  #     Description: The ARN of the GenerateQuestion state machine
-  #     Value:
-  #       Ref: GenerateQuestionMachine
+  GenerateQuestionStateMachine:
+      Description: The ARN of the GenerateQuestion state machine
+      Value:
+        Ref: GenerateQuestionMachine
   DynamoDbId:
       Description: The ARN of the DynamoDB
       Value:
