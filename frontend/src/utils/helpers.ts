@@ -1,19 +1,12 @@
-import { uploadData } from "aws-amplify/storage";
+import { Storage } from "aws-amplify";
 
-export async function s3UploadUnAuth(
-    file: any,
-    fileName: string,
-    callback: any
-  ) {
-    const stored = await uploadData({
-      key: fileName,
-      data: file,
-      options: {
-        accessLevel: "guest",
-        onProgress: callback
-      },
+  export async function s3UploadUnAuth(file: any, fileName: string) {
+    Storage.configure({ level: 'public' });
+  
+    const stored = await Storage.put(fileName, file, {
+      contentType: file.type
     });
-    return (await stored.result).key;
+    return stored.key;
   }
   
   export function replaceSpacesWithHyphens(filename: string) {

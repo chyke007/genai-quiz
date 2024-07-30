@@ -4,10 +4,13 @@ import { useRef, useState } from "react";
 import { Button, Tabs, TabsRef, FileInput, Label } from "flowbite-react";
 import { HiClipboardList } from "react-icons/hi";
 import { MdDashboard } from "react-icons/md";
+import { Amplify } from 'aws-amplify'
+import { awsExport } from '@/utils/aws-export';
 import Loader from "@/components/Loader";
 import Toaster from "@/components/Toaster";
 import { SourceStages } from "@/utils/types";
 import config from "@/utils/config";
+import { addLink } from "@/app/actions";
 import {
   isYouTubeLink,
   s3UploadUnAuth,
@@ -17,6 +20,9 @@ import {
 interface FormElements extends HTMLFormControlsCollection {
   message: HTMLInputElement;
 }
+
+Amplify.configure(awsExport);
+
 
 export default function Home() {
   const [isloading, setIsLoading] = useState(false);
@@ -60,14 +66,16 @@ export default function Home() {
 
     setIsLoading(true);
 
-    console.log(file)
     try {
       const fileName = replaceSpacesWithHyphens(
-        `public/${Date.now()}-${file[0].name}`
+        `${Date.now()}-${file[0].name}`
       );
 
-      await s3UploadUnAuth(file[0], fileName, (a: any) => {
-        console.log(a);
+      await s3UploadUnAuth(file[0], fileName);
+      setIsLoading(false);
+      setToaster({
+        message: "Uploaded successful ... Redirecting to Quiz Page",
+        toaster: toaster.toaster + 1,
       });
     } catch (e: any) {
       console.log(e);
@@ -75,6 +83,7 @@ export default function Home() {
         message: e.errors[0].message || "Unknown Error",
         toaster: toaster.toaster + 1,
       });
+      setIsLoading(false);
       emptyContents();
     }
   };
@@ -84,9 +93,29 @@ export default function Home() {
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
+    event.preventDefault();
+    const link = event.currentTarget?.link?.value;
+
+      if (!link || !isYouTubeLink(link)) {
+        alert("Please enter valid Youtube Link");
+        return;
+      }
+    
+
     setIsLoading(true);
-    return
+    try {
+      const res = await addLink({
+        value: link
+      });
+      emptyContents();
+
+      const output = res;
+      setIsLoading(false);
+    } catch (e: any) {
+      emptyContents();
+      console.log(e);
+      setIsLoading(false);
+    }
   };
   return (
     <main

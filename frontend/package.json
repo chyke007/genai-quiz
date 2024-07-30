@@ -9,9 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "aws-amplify": "^6.4.3",
-    "aws-iot-device-sdk": "^2.2.15",
-    "aws-sdk": "^2.1663.0",
+    
+    "aws-amplify": "^5.0.25",
+    "aws-iot-device-sdk": "^2.2.11",
+    "aws-sdk": "^2.961.0",
+
+
     "flowbite-react": "^0.7.2",
     "next": "14.2.5",
     "react": "^18",
