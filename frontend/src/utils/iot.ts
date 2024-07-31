@@ -1,8 +1,8 @@
 /* eslint-disable import/no-anonymous-default-export */
-import { awsExport } from 'src/utils/aws-export';
+import { awsExport } from '@/utils/aws-export';
 const AWSIoTData = require('aws-iot-device-sdk')
 const AWS = require('aws-sdk')
-import config from 'src/utils/config';
+import config from '@/utils/config';
 
 export default async (callme: any) => {
   const AWSConfiguration = {

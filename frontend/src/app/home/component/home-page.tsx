@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Button, Tabs, TabsRef, FileInput, Label } from "flowbite-react";
+import { useEffect, useRef, useState } from "react";
+import { Tabs, TabsRef, FileInput, Label } from "flowbite-react";
 import { HiClipboardList } from "react-icons/hi";
 import { MdDashboard } from "react-icons/md";
-import { Amplify } from 'aws-amplify'
-import { awsExport } from '@/utils/aws-export';
+import { Amplify } from "aws-amplify";
+import { awsExport } from "@/utils/aws-export";
 import Loader from "@/components/Loader";
 import Toaster from "@/components/Toaster";
 import { SourceStages } from "@/utils/types";
@@ -16,13 +16,17 @@ import {
   s3UploadUnAuth,
   replaceSpacesWithHyphens,
 } from "@/utils/helpers";
+// import Iot from "@/utils/iot";
 
 interface FormElements extends HTMLFormControlsCollection {
   message: HTMLInputElement;
 }
 
-Amplify.configure(awsExport);
+interface QAFormElement extends HTMLFormElement {
+  readonly elements: FormElements;
+}
 
+Amplify.configure(awsExport);
 
 export default function Home() {
   const [isloading, setIsLoading] = useState(false);
@@ -34,6 +38,32 @@ export default function Home() {
     toaster: 0,
     message: "Unknown Error",
   });
+  const [mqttClient, setMqttClient] = useState(null as any);
+
+  const addTopicListeners = (client: {
+    on(message: string, d: (x: string, y: string) => void): void;
+  }) => {
+    client.on("message", function (topic: string, payload: any) {
+      const payloadEnvelope = JSON.parse(payload.toString());
+
+      setIsLoading(false);
+      switch (payloadEnvelope.status) {
+        case "ERROR":
+          alert(payloadEnvelope.data.key);
+          break;
+        case "SUCCESS":
+          alert("Questions generated successfully!");
+          break;
+      }
+    });
+  };
+
+  // const setupIoT = async () => {
+  //   setMqttClient(await Iot(addTopicListeners));
+  // };
+  // useEffect(() => {
+  //   setupIoT().catch(console.error);
+  // }, []);
 
   const emptyContents = () => {
     setIsLoading(false);
@@ -72,6 +102,7 @@ export default function Home() {
       );
 
       await s3UploadUnAuth(file[0], fileName);
+      // mqttClient.subscribe(fileName);
       setIsLoading(false);
       setToaster({
         message: "Uploaded successful ... Redirecting to Quiz Page",
@@ -92,20 +123,22 @@ export default function Home() {
     setLink(e.target.value);
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent<QAFormElement>) => {
     event.preventDefault();
     const link = event.currentTarget?.link?.value;
 
-      if (!link || !isYouTubeLink(link)) {
-        alert("Please enter valid Youtube Link");
-        return;
-      }
-    
+    if (!link || !isYouTubeLink(link)) {
+      alert("Please enter valid Youtube Link");
+      return;
+    }
 
     setIsLoading(true);
+    const key  = `${Date.now()}-${link.split("=")[1]}`
+    console.log({ key })
     try {
       const res = await addLink({
-        value: link
+        link,
+        key
       });
       emptyContents();
 

@@ -9,12 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    
     "aws-amplify": "^5.0.25",
     "aws-iot-device-sdk": "^2.2.11",
     "aws-sdk": "^2.961.0",
-
-
     "flowbite-react": "^0.7.2",
     "next": "14.2.5",
     "react": "^18",
@@ -24,6 +21,7 @@
     "react-toastify": "^10.0.5"
   },
   "devDependencies": {
+    "@types/aws-iot-device-sdk": "^2.2.4",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
@@ -32,5 +30,14 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "browser": {
+    "crypto": false,
+    "fs": false,
+    "path": false,
+    "os": false,
+    "net": false,
+    "stream": false,
+    "tls": false
   }
 }

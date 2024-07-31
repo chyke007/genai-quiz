@@ -5,19 +5,15 @@ const headers = {
   "Content-Type": "application/json",
 };
 
-export const addLink = async ({ type, value }: any) => {
+export const addLink = async ({ key, link }: any) => {
   try {
     const response = await fetch(`${config.Api.ENDPOINT}/add-link`, {
       headers,
       method: "POST",
-      body: JSON.stringify({ value }),
+      body: JSON.stringify({ link, key }),
     });
     const data = await response.json();
-    return res.status(200).json(data);
-
-    console.log({ type, value });
-
-    return res;
+    return data;
   } catch (e) {
     return e;
   }
