@@ -6,3 +6,8 @@ export const ProcessingStages = {
   SUCCESS: "SUCCESS",
   ERROR: "ERROR",
 };
+
+export const sourceType = {
+    S3: "s3",
+    YOUTUBE: "youtube"
+}

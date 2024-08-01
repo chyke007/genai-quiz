@@ -86,11 +86,6 @@ functions:
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - bedrock:*
-        Resource:
-          - "*"
-      - Effect: Allow
-        Action:
         - iot:*
         Resource: '*'
       - Effect: Allow
@@ -105,28 +100,38 @@ functions:
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - bedrock:*
-        Resource:
-          - "*"
-      - Effect: Allow
-        Action:
         - iot:*
         Resource: '*'
 
-  generateQuestion:
-    handler: src/functions/stepfunctions/generate-question.handler
+  generateQuestionPdf:
+    handler: src/functions/stepfunctions/generate-question-pdf.handler
     environment:
       IOT_ENDPOINT: !GetAtt IotEndpoint.IotEndpointAddress
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - bedrock:*
+          - bedrock:InvokeModel
         Resource:
-          - "*"
+          - "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-instant-v1"
       - Effect: Allow
         Action:
-        - iot:*
+          - iot:*
         Resource: '*'
+  generateQuestionYoutube:
+    handler: src/functions/stepfunctions/generate-question-youtube.handler
+    environment:
+      IOT_ENDPOINT: !GetAtt IotEndpoint.IotEndpointAddress
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - bedrock:InvokeModel
+        Resource:
+          - "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-instant-v1"
+      - Effect: Allow
+        Action:
+          - iot:*
+        Resource: '*'
+  
   saveQuestionDynamoDb:
     handler: src/functions/stepfunctions/save-question-dynamodb.handler
     environment:
@@ -164,14 +169,28 @@ stepFunctions:
           ExtractText:
             Type: Task
             Resource: !GetAtt extractText.Arn
-            Next: GenerateQuestions
+            Next: DetermineQuestionGenerator
           ExtractTranscript:
             Type: Task
             Resource: !GetAtt extractTranscript.Arn
-            Next: GenerateQuestions
-          GenerateQuestions:
+            Next: DetermineQuestionGenerator
+          DetermineQuestionGenerator:
+            Type: Choice
+            Choices:
+              - Variable: "$.source"
+                StringEquals: "s3"
+                Next: GenerateQuestionPdf
+              - Variable: "$.source"
+                StringEquals: "youtube"
+                Next: GenerateQuestionYoutube
+            Default: Fail
+          GenerateQuestionPdf:
             Type: Task
-            Resource: !GetAtt generateQuestion.Arn
+            Resource: !GetAtt generateQuestionPdf.Arn
+            Next: SaveQuestionDynamoDb
+          GenerateQuestionYoutube:
+            Type: Task
+            Resource: !GetAtt generateQuestionYoutube.Arn
             Next: SaveQuestionDynamoDb
           SaveQuestionDynamoDb:
             Type: Task

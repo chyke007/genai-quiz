@@ -1,6 +1,6 @@
 import AWS from "aws-sdk";
 import { publishToTopic, extractFileName } from "../../utils/helper.mjs";
-import { ProcessingStages } from "../../utils/types.mjs";
+import { ProcessingStages, sourceType } from "../../utils/types.mjs";
 
 const { IOT_ENDPOINT, AWS_REGION } = process.env;
 const stepfunctions = new AWS.StepFunctions();
@@ -20,20 +20,15 @@ export const handler = async (event, context, callback) => {
     input: JSON.stringify({
       Bucket,
       Key,
-      source: "s3",
+      source: sourceType.S3,
     }),
   };
-  console.log({ params });
 
-  //Iot
   const res = {
-    status: ProcessingStages.SUCCESS,
+    status: ProcessingStages.UPLOADED,
     data: { Key, value: null },
   };
-  console.log({ fileName: extractFileName(Key) });
   await publishToTopic(iotClient, extractFileName(Key), res);
-
-  //StepFunction
   return stepfunctions
     .startExecution(params)
     .promise()
