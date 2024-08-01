@@ -93,6 +93,11 @@ functions:
         Action:
         - iot:*
         Resource: '*'
+      - Effect: Allow
+        Action:
+          - s3:*
+        Resource:
+          - "arn:aws:s3:::${self:custom.s3_bucket_name}/*"
   extractTranscript:
     handler: src/functions/stepfunctions/extract-youtube-transcript.handler
     environment:

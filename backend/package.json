@@ -5,27 +5,31 @@
     "private": true,
     "main": "index.js",
     "devDependencies": {
-      "serverless": "^3.28.1",
-      "serverless-dotenv-plugin": "^6.0.0",
-      "serverless-iam-roles-per-function": "^3.2.0",
-      "serverless-step-functions": "^3.13.0"
+        "serverless": "^3.28.1",
+        "serverless-dotenv-plugin": "^6.0.0",
+        "serverless-iam-roles-per-function": "^3.2.0",
+        "serverless-step-functions": "^3.13.0"
     },
     "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "echo \"Error: no test specified\" && exit 1"
     },
     "repository": {
-      "type": "git",
-      "url": "git+https://github.com/chyke007/genai-quiz.git"
+        "type": "git",
+        "url": "git+https://github.com/chyke007/genai-quiz.git"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
     "bugs": {
-      "url": "https://github.com/chyke007/genai-quiz/issues"
+        "url": "https://github.com/chyke007/genai-quiz/issues"
     },
     "homepage": "https://github.com/chyke007/genai-quiz#readme",
     "dependencies": {
-      "lodash": "^4.17.21",
-      "uuid": "^9.0.0"
+        "@aws-sdk/client-s3": "^3.621.0",
+        "aws-sdk": "^2.1665.0",
+        "lodash": "^4.17.21",
+        "pdf-parse-debugging-disabled": "^1.1.1",
+        "uuid": "^9.0.0",
+        "youtube-transcript-api": "^1.1.2"
     }
-  }
+}

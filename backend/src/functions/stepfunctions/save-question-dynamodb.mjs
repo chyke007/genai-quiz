@@ -1,4 +1,4 @@
-module.exports.handler = async (event) => {
+export const handler = async (event) => {
   let res = {
     status: "SUCCESS",
     data: { key: "QUESTIONS_ADDED", value: null },

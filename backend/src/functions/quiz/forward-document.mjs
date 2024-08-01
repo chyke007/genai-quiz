@@ -1,26 +1,25 @@
-"use strict";
-const AWS = require("aws-sdk");
+import AWS from "aws-sdk";
+import { publishToTopic, extractFileName } from "../../utils/helper.mjs";
+import { ProcessingStages } from "../../utils/types.mjs";
+
+const { IOT_ENDPOINT, AWS_REGION } = process.env;
 const stepfunctions = new AWS.StepFunctions();
 const { STATE_MACHINE_ARN } = process.env;
-// const { NO_EMAIL_FOUND } = require('../../utils/constant');
-const { publishToTopic, extractFileName } = require("../../utils/helper");
-const { ProcessingStages } = require("../../utils/types");
-const { IOT_ENDPOINT, AWS_REGION } = process.env;
 
 AWS.config.update({ region: AWS_REGION });
 const iotClient = new AWS.IotData({ endpoint: IOT_ENDPOINT });
 
-module.exports.handler = async (event, context, callback) => {
-  const bucket = event.Records[0].s3.bucket.name;
-  const key = decodeURIComponent(
+export const handler = async (event, context, callback) => {
+  const Bucket = event.Records[0].s3.bucket.name;
+  const Key = decodeURIComponent(
     event.Records[0].s3.object.key.replace(/\+/g, " ")
   );
   const stateMachineArn = STATE_MACHINE_ARN;
   const params = {
     stateMachineArn,
     input: JSON.stringify({
-      bucket,
-      key,
+      Bucket,
+      Key,
       source: "s3",
     }),
   };
@@ -29,10 +28,10 @@ module.exports.handler = async (event, context, callback) => {
   //Iot
   const res = {
     status: ProcessingStages.SUCCESS,
-    data: { key, value: null },
+    data: { Key, value: null },
   };
-  console.log({ fileName: extractFileName(key) });
-  await publishToTopic(iotClient, extractFileName(key), res);
+  console.log({ fileName: extractFileName(Key) });
+  await publishToTopic(iotClient, extractFileName(Key), res);
 
   //StepFunction
   return stepfunctions
