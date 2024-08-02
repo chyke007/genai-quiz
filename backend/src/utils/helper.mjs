@@ -258,6 +258,7 @@ const formatBedrockResponse = (
     point: "1",
   };
 };
+
 export const getQuestionsFromYoutubeWithBedrock = async (substrings) => {
   const axiosPromises = substrings.map((substring) =>
     invokeBedrock(
@@ -376,23 +377,6 @@ export const fetchFromTableBeginsWith = async (tableName, PK) => {
         ":pk": PK,
       },
       ConsistentRead: true,
-    });
-    return docClient.send(command);
-  } catch (e) {
-    console.log("Error while saving: ", e);
-    return false;
-  }
-};
-
-export const fetchFromTableBeginsWithGSI = async (tableName, GS1PK) => {
-  try {
-    const command = new QueryCommand({
-      TableName: tableName,
-      IndexName: "GS1",
-      KeyConditionExpression: "GS1PK=:pk",
-      ExpressionAttributeValues: {
-        ":pk": GS1PK,
-      },
     });
     return docClient.send(command);
   } catch (e) {

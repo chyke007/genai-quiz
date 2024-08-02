@@ -34,7 +34,7 @@ export default function Component() {
       <Navbar.Toggle />
 
       <Navbar.Collapse>
-        <Navbar.Link href="#" active>
+        <Navbar.Link href="/" active>
           Home
         </Navbar.Link>
         <Navbar.Link href="/result">Result</Navbar.Link>

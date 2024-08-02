@@ -148,6 +148,64 @@ functions:
         - iot:*
         Resource: '*'
 
+  getQuestion:
+    handler: src/functions/quiz/get-question.handler
+    environment:
+      DYNAMODB_NAME: ${self:custom.dynamodb_name}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:GetItem
+          - dynamodb:Query
+        Resource:
+          - !GetAtt GenAiQuizDB.Arn
+      - Effect: Allow
+        Action:
+          - s3:*
+        Resource:
+          - "arn:aws:s3:::${self:custom.s3_bucket_name}/*"
+    events:
+      - http: 
+          path: get-question/{id}
+          method: get
+          cors: true
+          private: true
+  
+  saveResult:
+    handler: src/functions/quiz/save-result.handler
+    environment:
+      DYNAMODB_NAME: ${self:custom.dynamodb_name}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:PutItem
+        Resource:
+          - !GetAtt GenAiQuizDB.Arn
+    events:
+      - http: 
+          path: save-result
+          method: post
+          cors: true
+          private: true
+  
+  getResult:
+    handler: src/functions/quiz/get-result.handler
+    environment:
+      DYNAMODB_NAME: ${self:custom.dynamodb_name}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:GetItem
+          - dynamodb:Query
+        Resource:
+          - !GetAtt GenAiQuizDB.Arn
+    events:
+      - http: 
+          path: get-result
+          method: get
+          cors: true
+          private: true
+
 stepFunctions:
   stateMachines:
     GenerateQuestion:

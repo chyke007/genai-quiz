@@ -33,7 +33,7 @@ export default function Home() {
   const tabsRef = useRef<TabsRef>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [link, setLink] = useState("");
-  const [content, setContent] = useState("");
+  const [message, setMessage] = useState("");
   const [toaster, setToaster] = useState({
     toaster: 0,
     message: "Unknown Error",
@@ -68,7 +68,6 @@ export default function Home() {
   const emptyContents = () => {
     setIsLoading(false);
     setLink("");
-    setContent("");
   };
 
   const selectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,9 +139,8 @@ export default function Home() {
         link,
         key
       });
+      console.log({ res })
       emptyContents();
-
-      const output = res;
       setIsLoading(false);
     } catch (e: any) {
       emptyContents();
@@ -154,7 +152,7 @@ export default function Home() {
     <main
       className={`h-screen flex flex-col bg-white dark:bg-slate-900 items-center lg:px-12 px-8 py-6`}
     >
-      <Loader loading={isloading} />
+      <Loader loading={isloading} message={message}/>
       <Toaster toaster={toaster.toaster} message={toaster.message} />
       <span className="lg:w-1/2 w-full h-full overflow-y-auto bg-gray-50 dark:bg-slate-900">
         <aside className="w-full rounded px-4 pt-6">

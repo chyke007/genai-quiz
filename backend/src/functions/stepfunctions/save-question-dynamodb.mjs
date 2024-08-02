@@ -23,7 +23,8 @@ export const handler = async (event) => {
     title,
     source,
     questions: JSON.stringify(value),
-    content
+    content,
+    key
   };
 
   let res = {
