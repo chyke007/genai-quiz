@@ -20,7 +20,7 @@ export default function RootLayout({
       <head>
         <ThemeModeScript />
       </head>
-      <body className={inter.className}>{children}</body>
+      <body suppressHydrationWarning={true}>{children}</body>
     </html>
   );
 }

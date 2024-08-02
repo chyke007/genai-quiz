@@ -24,3 +24,5 @@ import { Storage } from "aws-amplify";
     // Test if the string matches the YouTube URL pattern
     return youtubeRegex.test(str);
   };
+
+  export const truncate = (input: string) => input.length > 20 ? `${input.substring(0, 20)}...` : input;

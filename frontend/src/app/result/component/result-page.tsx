@@ -1,57 +1,92 @@
 "use client";
 
 import { PropsWithChildren } from "react";
-import { Table } from "flowbite-react";
+import { Banner, Table } from "flowbite-react";
+import { HiX } from "react-icons/hi";
 import Link from "next/link";
+import { truncate } from "@/utils/helpers";
 
+interface ResultData {
+  contentId: string;
+  correctPoints: number;
+  dateTaken: string;
+  id: string;
+  score: number;
+  title: string;
+  totalPoints: string;
+}
 
 export default function ResultPage({ result }: PropsWithChildren<any>) {
-
-  console.log({ result })
-
   return (
     <main
       className={`h-screen flex flex-col bg-white dark:bg-slate-900 items-center lg:px-12 px-8 py-6`}
     >
-      <span className="lg:w-1/2 w-full h-full overflow-y-auto bg-gray-50 dark:bg-slate-900">
+      <span className="lg:w-2/3 w-full h-full overflow-y-auto bg-gray-50 dark:bg-slate-900">
         <aside className="w-full rounded px-4 pt-6">
-          <span className="lg:w-1/2 w-full h-full overflow-y-auto bg-gray-50 dark:bg-slate-900">
-            <h3 className="mb-3 font-semibold text-gray-900 sm:text-4xl sm:leading-none sm:tracking-tight dark:text-white">
-              Result
-            </h3>
-            <p className="mb-6 text-md font-normal text-gray-900 sm:text-xl dark:text-white">
-              All attempts shown below:
-            </p>
+          <span className="lg:w-2/3 w-full h-full overflow-y-auto bg-gray-50 dark:bg-slate-900">
+            <Banner>
+          <div className="flex w-full flex-col justify-between border-b border-gray-200 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-700 md:flex-row">
+            <div className="mb-4 md:mb-0 md:mr-4">
+              <h2 className="mb-1 text-base font-semibold text-gray-900 dark:text-white">
+                Result
+              </h2>
+              <span className="flex items-center text-sm font-normal text-gray-500 dark:text-gray-400">
+                Find below all attempt result. You can also retake a quiz by clicking the <aside className="font-medium text-cyan-600 hover:underline dark:text-cyan-500 px-2"> Retake </aside> button
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center">
+              <Banner.CollapseButton
+                color="gray"
+                className="border-0 bg-transparent text-gray-500 dark:text-gray-400"
+              >
+                <HiX className="h-4 w-4" />
+              </Banner.CollapseButton>
+            </div>
+          </div>
+        </Banner>
           </span>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto my-4 ">
             <Table hoverable>
               <Table.Head>
                 <Table.HeadCell>Quiz Title</Table.HeadCell>
                 <Table.HeadCell>Score</Table.HeadCell>
                 <Table.HeadCell>Percentage</Table.HeadCell>
                 <Table.HeadCell>Attempt</Table.HeadCell>
+                <Table.HeadCell>Date Taken</Table.HeadCell>
               </Table.Head>
               <Table.Body className="divide-y">
-                <Table.Row className="bg-white dark:border-gray-700 dark:bg-gray-800">
-                  <Table.Cell className="whitespace-nowrap font-medium text-gray-900 dark:text-white max-width-12">
-                    <Link
-                      href="/quiz/123"
-                      className="font-medium text-cyan-600 hover:underline dark:text-cyan-500"
+                {result &&
+                  result.map((data: ResultData) => (
+                    <Table.Row
+                      key={data.id}
+                      className="bg-white dark:border-gray-700 dark:bg-gray-800"
                     >
-                      {"AWS re:Invent 2023"}
-                    </Link>
-                  </Table.Cell>
-                  <Table.Cell>1 of 2</Table.Cell>
-                  <Table.Cell>50%</Table.Cell>
-                  <Table.Cell><Link
-                      href="/quiz/123"
-                      className="font-medium text-cyan-600 hover:underline dark:text-cyan-500"
-                    >
-                      Retake
-                    </Link>
-                  </Table.Cell>
-                </Table.Row>
+                      <Table.Cell className="whitespace-nowrap font-medium text-gray-900 dark:text-white max-width-12">
+                        <Link
+                          href={`/quiz/${data.contentId}`}
+                          className="font-medium text-cyan-600 hover:underline dark:text-cyan-500"
+                        >
+                          {truncate(data.title)}
+                        </Link>
+                      </Table.Cell>
+                      <Table.Cell>
+                        {data.correctPoints} of {data.totalPoints}
+                      </Table.Cell>
+                      <Table.Cell>{Math.round(data.score)}%</Table.Cell>
+                      <Table.Cell>
+                        <Link
+                          href={`/quiz/${data.contentId}`}
+                          className="font-medium text-cyan-600 hover:underline dark:text-cyan-500"
+                        >
+                          Retake
+                        </Link>
+                      </Table.Cell>
+                      <Table.Cell>
+                        {new Date(data.dateTaken).toLocaleDateString()}
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
               </Table.Body>
             </Table>
           </div>

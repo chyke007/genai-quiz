@@ -1,11 +1,15 @@
+"use server"
+
 import config from "@/utils/config";
+import { revalidatePath } from 'next/cache'
 
 const headers = {
   "x-api-key": `${config.Api.APIKEY}`,
   "Content-Type": "application/json",
+  "Cache-Control": "no-cache"
 };
 
-export const addLink = async ({ key, link }: any) => {
+export async function addLink ({ key, link }: any) {
   try {
     const response = await fetch(`${config.Api.ENDPOINT}/add-link`, {
       headers,
@@ -19,7 +23,7 @@ export const addLink = async ({ key, link }: any) => {
   }
 };
 
-export const getQuiz = async (id: string) => {
+export async function getQuiz (id: string) {
   try {
     const response = await fetch(`${config.Api.ENDPOINT}/get-question/${id}`, {
       headers,
@@ -32,7 +36,7 @@ export const getQuiz = async (id: string) => {
   }
 }
 
-export const saveResult = async ({ id, correctPoints, totalPoints, title }: any) => {
+export async function saveResult({ id, correctPoints, totalPoints, title }: any) {
   try {
     const response = await fetch(`${config.Api.ENDPOINT}/save-result`, {
       headers,
@@ -46,13 +50,14 @@ export const saveResult = async ({ id, correctPoints, totalPoints, title }: any)
   }
 };
 
-export const getResult = async () => {
+export async function getResult () {
   try {
     const response = await fetch(`${config.Api.ENDPOINT}/get-result`, {
       headers,
       method: "GET"
     });
     const data = await response.json();
+    revalidatePath('/result')
     return data;
   } catch (e) {
     return e;

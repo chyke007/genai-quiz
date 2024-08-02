@@ -5,10 +5,9 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-async function getResult(id: string) {
+async function getResult() {
   try {
     let result = await getResultAction();
-    console.log({ result })
     return result;
   } catch (e) {
     console.log(e);
@@ -16,13 +15,9 @@ async function getResult(id: string) {
   }
 }
 
-export default async function Page({
-  params: { id },
-}: {
-  params: { id: string };
-}) {
+export default async function Page() {
   try {
-    const result = await getResult(id);
+    const result = await getResult();
 
     return (
       <>

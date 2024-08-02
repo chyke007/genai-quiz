@@ -16,7 +16,7 @@ import {
   s3UploadUnAuth,
   replaceSpacesWithHyphens,
 } from "@/utils/helpers";
-// import Iot from "@/utils/iot";
+import Iot from "@/utils/iot";
 
 interface FormElements extends HTMLFormControlsCollection {
   message: HTMLInputElement;
@@ -40,30 +40,14 @@ export default function Home() {
   });
   const [mqttClient, setMqttClient] = useState(null as any);
 
-  const addTopicListeners = (client: {
-    on(message: string, d: (x: string, y: string) => void): void;
-  }) => {
-    client.on("message", function (topic: string, payload: any) {
-      const payloadEnvelope = JSON.parse(payload.toString());
+  
 
-      setIsLoading(false);
-      switch (payloadEnvelope.status) {
-        case "ERROR":
-          alert(payloadEnvelope.data.key);
-          break;
-        case "SUCCESS":
-          alert("Questions generated successfully!");
-          break;
-      }
-    });
+  const setupIoT = async () => {
+    // await Iot()
   };
-
-  // const setupIoT = async () => {
-  //   setMqttClient(await Iot(addTopicListeners));
-  // };
-  // useEffect(() => {
-  //   setupIoT().catch(console.error);
-  // }, []);
+  useEffect(() => {
+    setupIoT().catch(console.error);
+  }, []);
 
   const emptyContents = () => {
     setIsLoading(false);
@@ -101,7 +85,7 @@ export default function Home() {
       );
 
       await s3UploadUnAuth(file[0], fileName);
-      // mqttClient.subscribe(fileName);
+      mqttClient.subscribe(fileName);
       setIsLoading(false);
       setToaster({
         message: "Uploaded successful ... Redirecting to Quiz Page",
@@ -154,10 +138,10 @@ export default function Home() {
     >
       <Loader loading={isloading} message={message}/>
       <Toaster toaster={toaster.toaster} message={toaster.message} />
-      <span className="lg:w-1/2 w-full h-full overflow-y-auto bg-gray-50 dark:bg-slate-900">
+      <span className="lg:w-2/3 w-full h-full overflow-y-auto bg-gray-50 dark:bg-slate-900">
         <aside className="w-full rounded px-4 pt-6">
           <form onSubmit={handleSubmit} className="rounded">
-            <span className="lg:w-1/2 w-full h-full overflow-y-auto bg-gray-50 dark:bg-slate-900">
+            <span className="lg:w-2/3 w-full h-full overflow-y-auto bg-gray-50 dark:bg-slate-900">
               <h3 className="mb-3 font-semibold text-gray-900 sm:text-4xl sm:leading-none sm:tracking-tight dark:text-white">
                 Get Started
               </h3>

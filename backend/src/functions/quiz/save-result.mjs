@@ -35,18 +35,13 @@ export const handler = async (event) => {
     dateTaken: dateNow
   };
 
-  await saveToTable(DYNAMODB_NAME, tableContent);
+  const res = await saveToTable(DYNAMODB_NAME, tableContent);
+  console.log({ tableContent, res })
 
   return {
     statusCode: 200,
     body: JSON.stringify({
-      id: dbResult.contentId,
-      source: dbResult.source,
-      content: {
-        title: dbResult.title,
-        url: dbResult.url,
-        questions: JSON.parse(dbResult.questions),
-      },
-    }),
+      message: "success"
+    })
   };
 };

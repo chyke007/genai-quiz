@@ -1,10 +1,30 @@
 /* eslint-disable import/no-anonymous-default-export */
+
+"use server"
+
 import { awsExport } from '@/utils/aws-export';
 const AWSIoTData = require('aws-iot-device-sdk')
 const AWS = require('aws-sdk')
 import config from '@/utils/config';
 
-export default async (callme: any) => {
+export default async (callbackOne?: any) => {
+  const callme = (client: {
+    on(message: string, d: (x: string, y: string) => void): void;
+  }, callback: any) => {
+    client.on("message", function (topic: string, payload: any) {
+      const payloadEnvelope = JSON.parse(payload.toString());
+
+      callback(false)
+      switch (payloadEnvelope.status) {
+        case "ERROR":
+          console.log(payloadEnvelope.data.key);
+          break;
+        case "SUCCESS":
+          console.log("Questions generated successfully!");
+          break;
+      }
+    });
+  };
   const AWSConfiguration = {
     poolId: awsExport.Auth.identityPoolId,
     host: config.IoT.ENDPOINT,
@@ -32,7 +52,9 @@ export default async (callme: any) => {
   })
 
   mqttClient.on('connect', function () {
-    callme(mqttClient)
+    callme(mqttClient, function(data: any){
+      callbackOne(data)
+    })
     console.log('mqttClient connected')
   })
 
