@@ -30,9 +30,7 @@ export const handler = async (event) => {
   let res = {
     status: ProcessingStages.SAVING_IN_DATABASE,
   };
-  await publishToTopic(iotClient, key, res);
 
-  console.log({ head, source, key, title });
   try {
     if (source === sourceType.S3) {
       const url = `${head}/${key}`;
@@ -42,13 +40,15 @@ export const handler = async (event) => {
       tableContent.url = url
     }
 
+    await publishToTopic(iotClient, source === sourceType.S3 ? extractFileName(key) : key, { status: res.status });
+
     await saveToTable(DYNAMODB_NAME, tableContent);
 
     res = {
       status: ProcessingStages.SUCCESS,
       data: { key, value },
     };
-    await publishToTopic(iotClient, source === sourceType.S3 ? extractFileName(key) : key, res);
+    await publishToTopic(iotClient, source === sourceType.S3 ? extractFileName(key) : key, { status: res.status, contentId });
   } catch (error) {
     console.log({ error });
     res = {

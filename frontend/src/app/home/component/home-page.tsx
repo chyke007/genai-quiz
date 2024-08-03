@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Tabs, TabsRef, FileInput, Label } from "flowbite-react";
 import { HiClipboardList } from "react-icons/hi";
@@ -8,7 +9,7 @@ import { Amplify } from "aws-amplify";
 import { awsExport } from "@/utils/aws-export";
 import Loader from "@/components/Loader";
 import Toaster from "@/components/Toaster";
-import { SourceStages } from "@/utils/types";
+import { ProcessingStages, SourceStages } from "@/utils/types";
 import config from "@/utils/config";
 import { addLink } from "@/app/actions";
 import {
@@ -16,7 +17,6 @@ import {
   s3UploadUnAuth,
   replaceSpacesWithHyphens,
 } from "@/utils/helpers";
-import Iot from "@/utils/iot";
 
 interface FormElements extends HTMLFormControlsCollection {
   message: HTMLInputElement;
@@ -33,24 +33,89 @@ export default function Home() {
   const tabsRef = useRef<TabsRef>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [link, setLink] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState("Loading...");
   const [toaster, setToaster] = useState({
     toaster: 0,
     message: "Unknown Error",
   });
-  const [mqttClient, setMqttClient] = useState(null as any);
+  const [topic, setTopic] = useState("");
+  const router = useRouter();
 
+  const addTopicListeners = (message: string) => {
+      const payloadEnvelope = JSON.parse(message);
+
+      switch (payloadEnvelope.status) {
+        case ProcessingStages.UPLOADED:
+          setMessage("Uploaded successfully")
+          break;
+        case ProcessingStages.EXTRACTING_CONTENT:
+          setMessage("Extracting content from source file")
+          break;
+        case ProcessingStages.GENERATING_QUESTIONS:
+          setMessage("Generating questions with Amazon Bedrock")
+          break;
+        case ProcessingStages.SAVING_IN_DATABASE:
+          setMessage("Saving state in database")
+          break;
+        case ProcessingStages.ERROR:
+          setToaster({
+            message: payloadEnvelope?.error || "An error occured, try again",
+            toaster: toaster.toaster + 1,
+          });
+          setIsLoading(false);
+          break;
+        case "SUCCESS":
+          setToaster({
+            message: "Success ... Redirecting to Quiz Page",
+            toaster: toaster.toaster + 1,
+          });
+          setMessage("Success")
+          router.push(`/quiz/${payloadEnvelope.contentId}`);
+          break;
+      }
+  };
   
 
-  const setupIoT = async () => {
-    // await Iot()
-  };
   useEffect(() => {
-    setupIoT().catch(console.error);
-  }, []);
+    const establishConnection = async () => {
+      const response = await fetch('/api/iot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ topic }),
+      });
+
+      if (!topic) return;
+
+      if (response.ok) {
+        console.log('Connected to AWS IoT');
+
+        const eventSource = new EventSource(`/api/iot?topic=${topic}`);
+
+        eventSource.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          console.log({ data })
+          addTopicListeners(data.message);
+        };
+
+        eventSource.onerror = (error) => {
+          console.error('EventSource failed:', error);
+          eventSource.close();
+        };
+
+        return () => {
+          eventSource.close();
+        };
+      } else {
+        console.error('Failed to connect to AWS IoT');
+      }
+    };
+
+    establishConnection();
+  }, [topic]);
 
   const emptyContents = () => {
-    setIsLoading(false);
     setLink("");
   };
 
@@ -85,12 +150,8 @@ export default function Home() {
       );
 
       await s3UploadUnAuth(file[0], fileName);
-      mqttClient.subscribe(fileName);
-      setIsLoading(false);
-      setToaster({
-        message: "Uploaded successful ... Redirecting to Quiz Page",
-        toaster: toaster.toaster + 1,
-      });
+      setTopic(fileName);
+      console.log({ key: fileName });
     } catch (e: any) {
       console.log(e);
       setToaster({
@@ -98,7 +159,6 @@ export default function Home() {
         toaster: toaster.toaster + 1,
       });
       setIsLoading(false);
-      emptyContents();
     }
   };
 
@@ -116,27 +176,27 @@ export default function Home() {
     }
 
     setIsLoading(true);
-    const key  = `${Date.now()}-${link.split("=")[1]}`
-    console.log({ key })
+    const key = `${Date.now()}-${link.split("=")[1]}`;
+    console.log({ key });
+    setTopic(key);
     try {
-      const res = await addLink({
+      await addLink({
         link,
-        key
+        key,
       });
-      console.log({ res })
       emptyContents();
-      setIsLoading(false);
     } catch (e: any) {
       emptyContents();
       console.log(e);
       setIsLoading(false);
     }
   };
+
   return (
     <main
       className={`h-screen flex flex-col bg-white dark:bg-slate-900 items-center lg:px-12 px-8 py-6`}
     >
-      <Loader loading={isloading} message={message}/>
+      <Loader loading={isloading} message={message} />
       <Toaster toaster={toaster.toaster} message={toaster.message} />
       <span className="lg:w-2/3 w-full h-full overflow-y-auto bg-gray-50 dark:bg-slate-900">
         <aside className="w-full rounded px-4 pt-6">

@@ -45,6 +45,7 @@ export const publishToTopic = async (client, topic, payload) => {
       qos: 1,
     };
 
+    console.log({ client, iotParams })
     let result = await client.publish(iotParams).promise();
     console.log("Message sent:", result);
   } catch (err) {

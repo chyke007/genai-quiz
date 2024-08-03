@@ -14,7 +14,6 @@ const iotClient = new AWS.IotData({ endpoint: IOT_ENDPOINT });
 
 export const handler = async (event) => {
   const { bucket, key, value } = event.data;
-  console.log({ key, bucket });
   let res = {
     status: ProcessingStages.GENERATING_QUESTIONS
   };

@@ -14,14 +14,11 @@ const iotClient = new AWS.IotData({ endpoint: IOT_ENDPOINT });
 
 export const handler = async (event) => {
   const { link, key, value } = event.data;
-  console.log({ key, link });
   let res = {
     status: ProcessingStages.GENERATING_QUESTIONS
   };
   try {
-    console.log({ value });
     const substrings = generateSubstringsYoutube(value);
-    console.log({ substrings })
 
     const questions = await getQuestionsFromYoutubeWithBedrock(substrings)
     const title = (await scrapeWebsite(link)).title;

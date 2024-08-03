@@ -13,7 +13,6 @@ const iotClient = new AWS.IotData({ endpoint: IOT_ENDPOINT });
 
 export const handler = async (event) => {
   const { Bucket, Key } = event;
-  console.log({ Key, Bucket });
   let res = {
     status: ProcessingStages.EXTRACTING_CONTENT,
   };
@@ -44,7 +43,6 @@ export const handler = async (event) => {
       };
     }
 
-    console.log({ extractedContent });
     await publishToTopic(iotClient, extractFileName(Key), res);
     
     res = {

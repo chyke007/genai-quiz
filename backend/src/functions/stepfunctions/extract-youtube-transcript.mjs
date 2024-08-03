@@ -18,7 +18,6 @@ export const handler = async (event) => {
   };
   try {
     const extractedContent = await extractYoutubeTranscript(link);
-    console.log({ extractedContent });
 
     await publishToTopic(iotClient, key, res);
     res = {

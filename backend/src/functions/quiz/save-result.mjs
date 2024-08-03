@@ -36,7 +36,6 @@ export const handler = async (event) => {
   };
 
   const res = await saveToTable(DYNAMODB_NAME, tableContent);
-  console.log({ tableContent, res })
 
   return {
     statusCode: 200,

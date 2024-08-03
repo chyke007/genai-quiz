@@ -32,12 +32,9 @@ body {
   }
 
   .react-quiz-container .quiz-result-filter {
-    position: relative;
-    width: 120px;
-    bottom: 15px;
-  
+ 
     .filter-dropdown-select {
-      height: auto !important
+      height: inherit !important
     }
   }
 }

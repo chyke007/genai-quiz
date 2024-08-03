@@ -13,8 +13,6 @@ export const handler = async (event) => {
 
   dbResult = dbResult.Items;
 
-  console.log({ dbResult, len: dbResult.length })
-
   const data = [];
   for (let i = 0; i < dbResult.length; i++) {
     data.push({

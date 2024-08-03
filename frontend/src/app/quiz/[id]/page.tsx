@@ -29,7 +29,11 @@ export default async function Page({
         {quiz && quiz.content ? (
            <QuizPage content={quiz.content} id={quiz.id} />
         ) : (
-          <div className="flex justify-center m-4 p-8 ">Invalid Quiz</div>
+          <section className="h-screen flex flex-col bg-white dark:bg-slate-900 items-center lg:px-12 px-8 py-6">
+            <div className="flex justify-center m-4 p-8 text-gray-900 dark:text-white">
+              Invalid Quiz
+            </div>
+          </section>
         )}
       </>
     );
