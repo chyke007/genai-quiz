@@ -30,11 +30,22 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+}
 
-  .react-quiz-container .quiz-result-filter {
- 
-    .filter-dropdown-select {
-      height: inherit !important
+.react-quiz-container .quiz-result-filter {
+  .filter-dropdown-select {
+    padding: 15px !important;
+  }
+
+  .filter-dropdown-select .selected-option {
+    bottom: 10px !important;
+    font-size: 15px !important;
+    position: relative;
+  }
+  @media (prefers-color-scheme: dark) {
+    .dropdown-options {
+      background-color: black !important;
+      color: white !important;
     }
   }
 }

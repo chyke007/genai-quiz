@@ -68,7 +68,7 @@ export default function QuizPage({ content, id }: PropsWithChildren<any>) {
         </Banner>
         <Quiz
           quiz={quiz}
-          timer={20}
+          timer={60}
           shuffle={true}
           shuffleAnswer={true}
           allowPauseTimer={true}
