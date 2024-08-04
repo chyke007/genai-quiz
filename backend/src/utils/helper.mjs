@@ -30,7 +30,6 @@ const settings = {
 };
 const bedrock = new BedrockRuntimeClient(settings);
 
-
 export const extractFileName = (key) => {
   let fileName = key.split("/");
   fileName = fileName[fileName.length - 1];
@@ -45,7 +44,6 @@ export const publishToTopic = async (client, topic, payload) => {
       qos: 1,
     };
 
-    console.log({ client, iotParams })
     let result = await client.publish(iotParams).promise();
     console.log("Message sent:", result);
   } catch (err) {
@@ -67,7 +65,6 @@ export const getS3Object = async (getObjectParams) => {
 
 export const extractPdfContent = async (pdfContent) => {
   const data = await pdf(pdfContent, { max: MAX_PAGES });
-  console.log(data, { max: MAX_PAGES });
   const result = [];
 
   const pages = data.text.split(/\r?\n\r?\n/);
@@ -102,7 +99,6 @@ export const extractYoutubeTranscript = async (youtubeVideoUrl) => {
   const maxSeconds = MAX_MINS * 60 * 1000;
   let totalSeconds = 0;
   let extractedTranscript = [];
-  console.log({ transcript });
 
   for (const entry of transcript) {
     const entryDuration = entry.duration || 0;
@@ -239,15 +235,16 @@ const formatBedrockResponse = (
   const jsonContentRegex = /\{([^}]+)\}/g;
   const matches = string.match(jsonContentRegex)[0].replace(/\s+/g, " ").trim();
 
-  console.log({ string, context, matches })
+  console.log({ string, context, matches });
   let obj;
   eval("obj=" + matches);
   let correct = 1 + obj.options.findIndex((x) => x === obj.correctAnswerString);
+  // const questionSection =
   return {
     id: String(index + 1),
-    question: obj.question,
+    question:
+      num !== null ? `${obj.question} - From ${type} ${num}` : obj.question,
     context,
-    num: num !== null ? `From ${type} ${num}` : null,
     questionType: "text",
     answers: obj.options,
     correctAnswerString: obj.correctAnswerString,
@@ -272,7 +269,6 @@ export const getQuestionsFromYoutubeWithBedrock = async (substrings) => {
   );
   let questions = [];
   const results = await Promise.all(axiosPromises);
-  console.log({ results })
 
   results.forEach(async (result, i) => {
     const parsedResponsed = JSON.parse(new TextDecoder().decode(result.body));
@@ -287,7 +283,7 @@ export const getQuestionsFromYoutubeWithBedrock = async (substrings) => {
     );
   });
 
-  return questions
+  return questions;
 };
 
 export const getQuestionsFromPdfWithBedrock = async (substrings) => {
@@ -316,10 +312,8 @@ export const getQuestionsFromPdfWithBedrock = async (substrings) => {
     );
   });
 
-  console.log({ questions: JSON.stringify(questions) });
-
   return questions;
-}
+};
 
 export const generateUuid = () => uuidv4();
 
@@ -369,33 +363,49 @@ export const saveToTable = async (tableName, props) => {
   }
 };
 
-export const fetchFromTableBeginsWith = async (tableName, PK) => {
+export const fetchFromTableByGS1PK = async (tableName, PK) => {
   try {
     const command = new QueryCommand({
       TableName: tableName,
-      KeyConditionExpression: "PK=:pk",
+      IndexName: 'GS1',
+      KeyConditionExpression: 'GS1PK=:pk',
       ExpressionAttributeValues: {
-        ":pk": PK,
+          ":pk": PK
+      }
+    });
+    return docClient.send(command);
+  } catch (e) {
+    console.log("Error while fetching: ", e);
+    return false;
+  }
+};
+
+export const fetchFromTableByPK = async (tableName, PK) => {
+  try {
+    const command = new QueryCommand({
+      TableName: tableName,
+      KeyConditionExpression: 'PK=:pk',
+      ExpressionAttributeValues: {
+          ":pk": PK
       },
       ConsistentRead: true,
     });
     return docClient.send(command);
   } catch (e) {
-    console.log("Error while saving: ", e);
+    console.log("Error while fetching: ", e);
     return false;
   }
 };
 
 export const extractFileNameWithoutExtension = (s3Key) => {
-    // Extract the file name with extension
-    const fileNameWithExt = s3Key.split('/').pop();
+  // Extract the file name with extension
+  const fileNameWithExt = s3Key.split("/").pop();
 
-    // Remove the file extension
-    const fileName = fileNameWithExt.split('.').slice(0, -1).join('.');
-  
-    // Remove leading numbers followed by a dash or underscore
-    const cleanedFileName = fileName.replace(/^\d+[-_]/, '');
-  
-    return cleanedFileName;
-}
+  // Remove the file extension
+  const fileName = fileNameWithExt.split(".").slice(0, -1).join(".");
 
+  // Remove leading numbers followed by a dash or underscore
+  const cleanedFileName = fileName.replace(/^\d+[-_]/, "");
+
+  return cleanedFileName;
+};

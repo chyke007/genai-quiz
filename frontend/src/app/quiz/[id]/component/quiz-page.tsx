@@ -1,13 +1,19 @@
 "use client";
 
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, useState } from "react";
 import Quiz from "react-quiz-component";
 import { saveResult } from "@/app/actions";
 import { Banner } from "flowbite-react";
 import Link from "next/link";
 import { HiArrowRight, HiX } from "react-icons/hi";
+import Toaster from "@/components/Toaster";
 
 export default function QuizPage({ content, id }: PropsWithChildren<any>) {
+  const [toaster, setToaster] = useState({
+    toaster: 0,
+    message: "Unknown Error",
+    type: "error"
+  });
   const questions = content?.questions;
   const url = content?.url;
   const quiz = {
@@ -21,21 +27,25 @@ export default function QuizPage({ content, id }: PropsWithChildren<any>) {
   };
 
   const setQuizResult = async (obj: any) => {
-    const saveScore = await saveResult({
+    await saveResult({
       id,
       correctPoints: obj.correctPoints,
       totalPoints: obj.totalPoints,
       title: content.title,
     });
 
-    console.log({ saveScore });
-    //Add saving score loader
+    setToaster({
+      message: "Result has been saved!",
+      toaster: toaster.toaster + 1,
+      type: "success"
+    });
   };
 
   return (
     <main
       className={`h-screen flex flex-col bg-white dark:bg-slate-900 items-center lg:px-12 px-8 py-6`}
     >
+      <Toaster toaster={toaster.toaster} message={toaster.message} type={toaster.type}/>
       <span className="lg:w-2/3 w-full h-full overflow-y-auto bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white">
         <Banner>
           <div className="flex w-full flex-col justify-between border-b border-gray-200 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-700 md:flex-row">
@@ -70,7 +80,6 @@ export default function QuizPage({ content, id }: PropsWithChildren<any>) {
           quiz={quiz}
           timer={60}
           shuffle={true}
-          shuffleAnswer={true}
           allowPauseTimer={true}
           showInstantFeedback={true}
           onComplete={setQuizResult}

@@ -148,6 +148,28 @@ functions:
         - iot:*
         Resource: '*'
 
+  getQuiz:
+    handler: src/functions/quiz/get-quiz.handler
+    environment:
+      DYNAMODB_NAME: ${self:custom.dynamodb_name}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource:
+          - !GetAtt GenAiQuizDB.Arn
+      - Effect: Allow
+        Action:
+          - s3:*
+        Resource:
+          - "arn:aws:s3:::${self:custom.s3_bucket_name}/*"
+    events:
+      - http: 
+          path: get-quiz
+          method: get
+          cors: true
+          private: true
+  
   getQuestion:
     handler: src/functions/quiz/get-question.handler
     environment:
@@ -155,10 +177,10 @@ functions:
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - dynamodb:GetItem
           - dynamodb:Query
         Resource:
           - !GetAtt GenAiQuizDB.Arn
+          - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${self:custom.dynamodb_name}/*
       - Effect: Allow
         Action:
           - s3:*
@@ -195,7 +217,6 @@ functions:
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - dynamodb:GetItem
           - dynamodb:Query
         Resource:
           - !GetAtt GenAiQuizDB.Arn

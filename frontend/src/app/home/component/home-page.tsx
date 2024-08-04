@@ -16,6 +16,7 @@ import {
   isYouTubeLink,
   s3UploadUnAuth,
   replaceSpacesWithHyphens,
+  getYouTubeVideoId,
 } from "@/utils/helpers";
 
 interface FormElements extends HTMLFormControlsCollection {
@@ -37,79 +38,91 @@ export default function Home() {
   const [toaster, setToaster] = useState({
     toaster: 0,
     message: "Unknown Error",
+    type: "error",
   });
   const [topic, setTopic] = useState("");
   const router = useRouter();
 
   const addTopicListeners = (message: string) => {
-      const payloadEnvelope = JSON.parse(message);
+    const payloadEnvelope = JSON.parse(message);
 
-      switch (payloadEnvelope.status) {
-        case ProcessingStages.UPLOADED:
-          setMessage("Uploaded successfully")
-          break;
-        case ProcessingStages.EXTRACTING_CONTENT:
-          setMessage("Extracting content from source file")
-          break;
-        case ProcessingStages.GENERATING_QUESTIONS:
-          setMessage("Generating questions with Amazon Bedrock")
-          break;
-        case ProcessingStages.SAVING_IN_DATABASE:
-          setMessage("Saving state in database")
-          break;
-        case ProcessingStages.ERROR:
-          setToaster({
-            message: payloadEnvelope?.error || "An error occured, try again",
-            toaster: toaster.toaster + 1,
-          });
-          setIsLoading(false);
-          break;
-        case "SUCCESS":
-          setToaster({
-            message: "Success ... Redirecting to Quiz Page",
-            toaster: toaster.toaster + 1,
-          });
-          setMessage("Success")
-          router.push(`/quiz/${payloadEnvelope.contentId}`);
-          break;
-      }
+    switch (payloadEnvelope.status) {
+      case ProcessingStages.UPLOADED:
+        setMessage("Uploaded successfully");
+        break;
+      case ProcessingStages.EXTRACTING_CONTENT:
+        setMessage("Extracting content from source file");
+        break;
+      case ProcessingStages.GENERATING_QUESTIONS:
+        setMessage("Generating questions with Amazon Bedrock");
+        break;
+      case ProcessingStages.SAVING_IN_DATABASE:
+        setMessage("Saving state in database");
+        break;
+      case ProcessingStages.ERROR:
+        setToaster({
+          message: payloadEnvelope?.error || "An error occured, try again",
+          toaster: toaster.toaster + 1,
+          type: "error",
+        });
+        setIsLoading(false);
+        break;
+      case "SUCCESS":
+        setToaster({
+          message: "Success ... Redirecting to Quiz Page",
+          toaster: toaster.toaster + 1,
+          type: "success",
+        });
+        setMessage("Success");
+        router.push(`/quiz/${payloadEnvelope.contentId}`);
+        break;
+    }
   };
-  
+
+  const pingIot = async (topic?: string) => {
+    const response = await fetch("/api/iot", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (response.ok) {
+      setToaster({
+        message: topic
+          ? "Connection re-established with AWS IoT"
+          : "Connection established with AWS IoT",
+        toaster: toaster.toaster + 1,
+        type: "success",
+      });
+    } else {
+      forceRefresh();
+    }
+    return response;
+  };
 
   useEffect(() => {
     const establishConnection = async () => {
-      const response = await fetch('/api/iot', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ topic }),
-      });
-
+      await pingIot(topic);
       if (!topic) return;
 
-      if (response.ok) {
-        console.log('Connected to AWS IoT');
+      const eventSource = new EventSource(`/api/iot?topic=${topic}`);
 
-        const eventSource = new EventSource(`/api/iot?topic=${topic}`);
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log({ data });
+        addTopicListeners(data.message);
+      };
 
-        eventSource.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          console.log({ data })
-          addTopicListeners(data.message);
-        };
+      eventSource.onerror = (error) => {
+        console.error("EventSource failed:", error);
+        eventSource.close();
+        forceRefresh();
+      };
 
-        eventSource.onerror = (error) => {
-          console.error('EventSource failed:', error);
-          eventSource.close();
-        };
-
-        return () => {
-          eventSource.close();
-        };
-      } else {
-        console.error('Failed to connect to AWS IoT');
-      }
+      return () => {
+        eventSource.close();
+      };
     };
 
     establishConnection();
@@ -117,6 +130,20 @@ export default function Home() {
 
   const emptyContents = () => {
     setLink("");
+  };
+
+  const forceRefresh = () => {
+    setToaster({
+      message: "Failed to connect to AWS IoT, page would be refreshed in 10 seconds",
+      toaster: toaster.toaster + 1,
+      type: "error",
+    });
+    setIsLoading(true);
+    
+    //refresh page in 10 seconds
+    setTimeout(function(){
+      window.location.reload();
+   }, 10000); 
   };
 
   const selectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,6 +184,7 @@ export default function Home() {
       setToaster({
         message: e.errors[0].message || "Unknown Error",
         toaster: toaster.toaster + 1,
+        type: "error",
       });
       setIsLoading(false);
     }
@@ -176,7 +204,7 @@ export default function Home() {
     }
 
     setIsLoading(true);
-    const key = `${Date.now()}-${link.split("=")[1]}`;
+    const key = `${Date.now()}-${getYouTubeVideoId(link)}`;
     console.log({ key });
     setTopic(key);
     try {
@@ -197,7 +225,11 @@ export default function Home() {
       className={`h-screen flex flex-col bg-white dark:bg-slate-900 items-center lg:px-12 px-8 py-6`}
     >
       <Loader loading={isloading} message={message} />
-      <Toaster toaster={toaster.toaster} message={toaster.message} />
+      <Toaster
+        toaster={toaster.toaster}
+        message={toaster.message}
+        type={toaster.type}
+      />
       <span className="lg:w-2/3 w-full h-full overflow-y-auto bg-gray-50 dark:bg-slate-900">
         <aside className="w-full rounded px-4 pt-6">
           <form onSubmit={handleSubmit} className="rounded">

@@ -1,9 +1,7 @@
 "use client";
 
 import {
-  Avatar,
   DarkThemeToggle,
-  Dropdown,
   Flowbite,
   Navbar,
 } from "flowbite-react";
@@ -37,6 +35,7 @@ export default function Component() {
         <Navbar.Link href="/" active>
           Home
         </Navbar.Link>
+        <Navbar.Link href="/quiz">All Quiz</Navbar.Link>
         <Navbar.Link href="/result">Result</Navbar.Link>
       </Navbar.Collapse>
     </Navbar>

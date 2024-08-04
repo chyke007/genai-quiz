@@ -1,4 +1,4 @@
-import { fetchFromTableBeginsWith, generateSignedUrl } from "../../utils/helper.mjs";
+import { fetchFromTableByGS1PK, generateSignedUrl } from "../../utils/helper.mjs";
 import { sourceType } from "../../utils/types.mjs";
 
 const { DYNAMODB_NAME } = process.env;
@@ -9,7 +9,7 @@ export const handler = async (event) => {
   const PK = `CONTENT#${id}`;
 
   //find id in db
-  let dbResult = await fetchFromTableBeginsWith(DYNAMODB_NAME, PK);
+  let dbResult = await fetchFromTableByGS1PK(DYNAMODB_NAME, PK);
  
   if (dbResult && dbResult.Items.length !== 1) {
     throw Error(`Invalid Id`);

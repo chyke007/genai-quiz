@@ -13,10 +13,10 @@ export const handler = async (event) => {
   const dateNow = dayjs().toDate().toISOString();
   const contentId = generateUuid();
   let tableContent = {
-    PK: `CONTENT#${contentId}`,
-    SK: `${dateNow}#${key}`,
-    GS1PK: `CONTENT#${key}`,
-    GS1SK: `${dateNow}#${contentId}`,
+    PK: `CONTENT#public`,
+    SK: `${contentId}#${dateNow}`,
+    GS1PK: `CONTENT#${contentId}`,
+    GS1SK: `${dateNow}#${key}`,
     dateCreated: dateNow,
     dateUpdated: dateNow,
     contentId,
