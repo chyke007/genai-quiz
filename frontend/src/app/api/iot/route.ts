@@ -1,6 +1,6 @@
-// app/api/iot/route.ts
 import { NextResponse } from "next/server";
 import { Iot } from "../../../utils/iot";
+export const maxDuration = 60;
 
 // Global mqttClient instance
 let mqttClient: { on: (arg0: string, arg1: (receivedTopic: any, payload: any) => void) => void; unsubscribe: (arg0: string) => void; }, subscribeClient: { subscribe: (arg0: string) => void; };
@@ -10,11 +10,19 @@ export async function POST() {
     if (!mqttClient) {
       mqttClient = await Iot((client: { subscribe: (arg0: string) => void; }) => {
         console.log("Connected to AWS IoT");
+        console.log({ client })
         subscribeClient = client;
+       
       });
     }
-
-    return NextResponse.json({ status: "connected" });
+    console.log(123, { mqttClient })
+    if(mqttClient){
+      console.log(1233)
+      return NextResponse.json({ status: "connected" });
+    }else{
+      console.log(1234)
+      throw Error("IoT not connected")
+    }
   } catch (error: any) {
     return NextResponse.json(
       { status: "error", message: error.message },
@@ -33,7 +41,17 @@ export async function GET(request: Request) {
       { status: 400 }
     );
   }
-  subscribeClient.subscribe(topic);
+
+  if(!subscribeClient){
+    await Iot((client: { subscribe: (arg0: string) => void; }) => {
+      console.log("Reconnected to AWS IoT");
+      subscribeClient = client;
+      client.subscribe(topic);
+    });
+  }else{
+    subscribeClient.subscribe(topic);
+  }
+  
 
   try {
     return new Response(

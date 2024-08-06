@@ -17,6 +17,7 @@ import {
   s3UploadUnAuth,
   replaceSpacesWithHyphens,
   getYouTubeVideoId,
+  sleep,
 } from "@/utils/helpers";
 
 interface FormElements extends HTMLFormControlsCollection {
@@ -176,8 +177,10 @@ export default function Home() {
         `${Date.now()}-${file[0].name}`
       );
 
-      await s3UploadUnAuth(file[0], fileName);
       setTopic(fileName);
+      await sleep(20000);
+      console.log("Done waiting")
+      await s3UploadUnAuth(file[0], fileName);
       console.log({ key: fileName });
     } catch (e: any) {
       console.log(e);
@@ -207,6 +210,8 @@ export default function Home() {
     const key = `${Date.now()}-${getYouTubeVideoId(link)}`;
     console.log({ key });
     setTopic(key);
+    await sleep(20000)
+    console.log("Done waiting")
     try {
       await addLink({
         link,
