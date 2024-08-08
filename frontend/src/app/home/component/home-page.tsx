@@ -16,7 +16,7 @@ import {
   isYouTubeLink,
   s3UploadUnAuth,
   replaceSpacesWithHyphens,
-  getYouTubeVideoId
+  getYouTubeVideoId,
 } from "@/utils/helpers";
 import { Iot, subscribe } from "@/utils/iot";
 import { mqtt5 } from "aws-iot-device-sdk-v2";
@@ -43,21 +43,32 @@ export default function Home() {
     type: "error",
   });
   const router = useRouter();
-  const [mqttClient, setMqttClient] = useState(null as any);
+  const [mqttClient, setMqttClient] = useState(
+    null as any as mqtt5.Mqtt5Client
+  );
 
   const [attemptsLeft, setAttemptsLeft] = useState(3);
 
   const setupIoT = async () => {
-    await Iot(async (client) => {
-      setMqttClient(client);
-      addListener(client);
-    }, toaster, setToaster, forceRefresh);
+    await Iot(
+      async (client: mqtt5.Mqtt5Client) => {
+        setMqttClient(client);
+        addListener(client);
+      },
+      toaster,
+      setToaster,
+      forceRefresh
+    );
   };
   useEffect(() => {
     setupIoT().catch(console.error);
   }, []);
 
-  const addTopicListener = (payloadEnvelope: string) => {
+  const addTopicListener = (payloadEnvelope: {
+    status: string;
+    error: string;
+    contentId: string;
+  }) => {
     console.log({ payloadEnvelope });
     switch (payloadEnvelope.status) {
       case ProcessingStages.UPLOADED:
@@ -92,12 +103,14 @@ export default function Home() {
     }
   };
 
-  const addListener = (client: {
-    on(message: string, d: (x: string, y: string) => void): void;
-  }) => {
+  const addListener = (client: mqtt5.Mqtt5Client) => {
     client.on("messageReceived", (eventData: mqtt5.MessageReceivedEvent) => {
-      const payloadEnvelope = JSON.parse(eventData.message.payload.toString());
-      addTopicListener(payloadEnvelope);
+      if (eventData?.message?.payload) {
+        const payloadEnvelope = JSON.parse(
+          eventData.message.payload.toString()
+        );
+        addTopicListener(payloadEnvelope);
+      }
     });
   };
   const emptyContents = () => {

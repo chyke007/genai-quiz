@@ -1,31 +1,31 @@
 "use client";
+
 /**
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
 
-import { mqtt5, iot, auth } from "aws-iot-device-sdk-v2";
+import { mqtt5, iot } from "aws-iot-device-sdk-v2";
 import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
-import { CognitoIdentityCredentials } from "aws-sdk";
+// import { CognitoIdentityCredentials } from "aws-sdk";
 import { once } from "events";
-import { awsExport } from "@/utils/aws-export";
 import config from "@/utils/config";
 import { toUtf8 } from "@aws-sdk/util-utf8-browser";
+import { CredentialType } from "./types";
 
 interface AWSCognitoCredentialOptions {
   IdentityPoolId: string;
   Region: string;
 }
 
-class AWSCognitoCredentialsProvider extends auth.CredentialsProvider {
+class AWSCognitoCredentialsProvider {
   private options: AWSCognitoCredentialOptions;
-  private cachedCredentials?: CognitoIdentityCredentials;
+  private cachedCredentials?: any;
 
   constructor(
     options: AWSCognitoCredentialOptions,
     expire_interval_in_ms?: number
   ) {
-    super();
     this.options = options;
 
     setInterval(async () => {
@@ -33,7 +33,7 @@ class AWSCognitoCredentialsProvider extends auth.CredentialsProvider {
     }, expire_interval_in_ms ?? 3600 * 1000);
   }
 
-  getCredentials(): auth.AWSCredentials {
+  getCredentials(): CredentialType {
     return {
       aws_access_id: this.cachedCredentials?.accessKeyId ?? "",
       aws_secret_key: this.cachedCredentials?.secretAccessKey ?? "",
@@ -45,8 +45,6 @@ class AWSCognitoCredentialsProvider extends auth.CredentialsProvider {
   async refreshCredentials() {
     console.log("Fetching Cognito credentials");
     this.cachedCredentials = await fromCognitoIdentityPool({
-      // Required. The unique identifier for the identity pool from which an identity should be
-      // retrieved or generated.
       identityPoolId: this.options.IdentityPoolId,
       clientConfig: { region: this.options.Region },
     })();
@@ -55,7 +53,7 @@ class AWSCognitoCredentialsProvider extends auth.CredentialsProvider {
 
 function createClient(
   provider: AWSCognitoCredentialsProvider,
-  toaster, setToaster, forceRefresh
+  toaster: { toaster: number; message: string; type: string; }, setToaster: any, forceRefresh: any
 ): mqtt5.Mqtt5Client {
   let wsConfig: iot.WebsocketSigv4Config = {
     credentialsProvider: provider,
@@ -64,7 +62,7 @@ function createClient(
 
   let builder: iot.AwsIotMqtt5ClientConfigBuilder =
     iot.AwsIotMqtt5ClientConfigBuilder.newWebsocketMqttBuilderWithSigv4Auth(
-      config.IoT.ENDPOINT,
+      config.IoT.ENDPOINT ,
       wsConfig
     );
 
@@ -123,7 +121,7 @@ function createClient(
   return client;
 }
 
-export const Iot = async (callme: any, toaster, setToaster, forceRefresh) => {
+export const Iot = async (callme: any, toaster: { toaster: number; message: string; type: string; }, setToaster: any, forceRefresh: any) => {
   /** Set up the credentialsProvider */
   const provider = new AWSCognitoCredentialsProvider({
     IdentityPoolId: config.Cognito.IDENTITY_POOL_ID,

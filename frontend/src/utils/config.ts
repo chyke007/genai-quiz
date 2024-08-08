@@ -7,13 +7,13 @@ export default {
     },
 
     Cognito: {
-        REGION: process.env.NEXT_PUBLIC_REGION,
-        USER_POOL_ID: process.env.NEXT_PUBLIC_USER_POOL_ID,
-        APP_CLIENT_ID: process.env.NEXT_PUBLIC_APP_CLIENT_ID,
-        IDENTITY_POOL_ID: process.env.NEXT_PUBLIC_IDENTITY_POOL_ID,
+        REGION: process.env.NEXT_PUBLIC_REGION || "us-east-1",
+        USER_POOL_ID: process.env.NEXT_PUBLIC_USER_POOL_ID || "id",
+        APP_CLIENT_ID: process.env.NEXT_PUBLIC_APP_CLIENT_ID || "id",
+        IDENTITY_POOL_ID: process.env.NEXT_PUBLIC_IDENTITY_POOL_ID || "id",
     },
     IoT: {
-        ENDPOINT: process.env.NEXT_PUBLIC_IOT_ENDPOINT,
+        ENDPOINT: process.env.NEXT_PUBLIC_IOT_ENDPOINT || "endpoint",
         YOUTUBE_VIDEO_PROCESSED: "YOUTUBE_VIDEO_PROCESSED",
         PDF_PROCESSED: "PDF_PROCESSED",
         QUESTION_GENERATED: "QUESTION_GENERATED"
