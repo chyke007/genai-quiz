@@ -31,6 +31,7 @@ export const handler = async (event) => {
       status: ProcessingStages.ERROR,
       error: "An error occured",
     };
+    console.log(e)
     await publishToTopic(iotClient, key, res);
   }
   return res;
