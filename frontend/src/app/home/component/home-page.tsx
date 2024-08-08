@@ -16,9 +16,10 @@ import {
   isYouTubeLink,
   s3UploadUnAuth,
   replaceSpacesWithHyphens,
-  getYouTubeVideoId,
-  sleep,
+  getYouTubeVideoId
 } from "@/utils/helpers";
+import { Iot, subscribe } from "@/utils/iot";
+import { mqtt5 } from "aws-iot-device-sdk-v2";
 
 interface FormElements extends HTMLFormControlsCollection {
   message: HTMLInputElement;
@@ -41,12 +42,23 @@ export default function Home() {
     message: "Unknown Error",
     type: "error",
   });
-  const [topic, setTopic] = useState("");
   const router = useRouter();
+  const [mqttClient, setMqttClient] = useState(null as any);
 
-  const addTopicListeners = (message: string) => {
-    const payloadEnvelope = JSON.parse(message);
+  const [attemptsLeft, setAttemptsLeft] = useState(3);
 
+  const setupIoT = async () => {
+    await Iot(async (client) => {
+      setMqttClient(client);
+      addListener(client);
+    }, toaster, setToaster, forceRefresh);
+  };
+  useEffect(() => {
+    setupIoT().catch(console.error);
+  }, []);
+
+  const addTopicListener = (payloadEnvelope: string) => {
+    console.log({ payloadEnvelope });
     switch (payloadEnvelope.status) {
       case ProcessingStages.UPLOADED:
         setMessage("Uploaded successfully");
@@ -80,71 +92,31 @@ export default function Home() {
     }
   };
 
-  const pingIot = async (topic?: string) => {
-    const response = await fetch("/api/iot", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+  const addListener = (client: {
+    on(message: string, d: (x: string, y: string) => void): void;
+  }) => {
+    client.on("messageReceived", (eventData: mqtt5.MessageReceivedEvent) => {
+      const payloadEnvelope = JSON.parse(eventData.message.payload.toString());
+      addTopicListener(payloadEnvelope);
     });
-
-    if (response.ok) {
-      setToaster({
-        message: topic
-          ? "Connection re-established with AWS IoT"
-          : "Connection established with AWS IoT",
-        toaster: toaster.toaster + 1,
-        type: "success",
-      });
-    } else {
-      forceRefresh();
-    }
-    return response;
   };
-
-  useEffect(() => {
-    const establishConnection = async () => {
-      await pingIot(topic);
-      if (!topic) return;
-
-      const eventSource = new EventSource(`/api/iot?topic=${topic}`);
-
-      eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        console.log({ data });
-        addTopicListeners(data.message);
-      };
-
-      eventSource.onerror = (error) => {
-        console.error("EventSource failed:", error);
-        eventSource.close();
-        forceRefresh();
-      };
-
-      return () => {
-        eventSource.close();
-      };
-    };
-
-    establishConnection();
-  }, [topic]);
-
   const emptyContents = () => {
     setLink("");
   };
 
   const forceRefresh = () => {
     setToaster({
-      message: "Failed to connect to AWS IoT, page would be refreshed in 10 seconds",
+      message:
+        "Failed to connect to AWS IoT, page would be refreshed in 10 seconds",
       toaster: toaster.toaster + 1,
       type: "error",
     });
     setIsLoading(true);
-    
+
     //refresh page in 10 seconds
-    setTimeout(function(){
+    setTimeout(function () {
       window.location.reload();
-   }, 10000); 
+    }, 10000);
   };
 
   const selectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,9 +149,7 @@ export default function Home() {
         `${Date.now()}-${file[0].name}`
       );
 
-      setTopic(fileName);
-      await sleep(20000);
-      console.log("Done waiting")
+      await subscribe(mqttClient, fileName);
       await s3UploadUnAuth(file[0], fileName);
       console.log({ key: fileName });
     } catch (e: any) {
@@ -209,9 +179,7 @@ export default function Home() {
     setIsLoading(true);
     const key = `${Date.now()}-${getYouTubeVideoId(link)}`;
     console.log({ key });
-    setTopic(key);
-    await sleep(20000)
-    console.log("Done waiting")
+    await subscribe(mqttClient, key);
     try {
       await addLink({
         link,

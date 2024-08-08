@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@aws-amplify/pubsub": "^5.0.15",
+    "@aws-sdk/credential-providers": "^3.624.0",
     "aws-amplify": "^5.0.25",
-    "aws-iot-device-sdk": "^2.2.11",
+    "aws-iot-device-sdk-v2": "^1.20.0",
     "aws-sdk": "^2.961.0",
     "bufferutil": "^4.0.8",
+    "events": "^3.3.0",
     "flowbite-react": "^0.7.2",
     "next": "14.2.5",
     "react": "^18",
