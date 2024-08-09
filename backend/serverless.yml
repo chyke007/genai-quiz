@@ -10,7 +10,7 @@ useDotenv: true
 
 provider:
   name: aws
-  runtime: nodejs16.x
+  runtime: nodejs18.x
   stage: ${opt:stage, 'dev'}
   timeout: 60
   region: ${opt:region, env:AWS_DEFAULT_REGION, 'us-east-1'}
@@ -31,7 +31,6 @@ custom:
   s3_bucket_name: ${self:service}-genaiquiz
   dynamodb_name: ${self:service}-genaiquiz
   iot_name: ${self:service}-genaiquiz
-  region: us-east-1
 
 functions:
   forwardYoutubeLink:
@@ -497,7 +496,7 @@ resources:
       Properties:
         FunctionName: ${self:service}-getIoTEndpoint
         Handler: index.handler
-        Runtime: nodejs16.x
+        Runtime: nodejs18.x
         Code:
           ZipFile: |
             const aws = require("aws-sdk")

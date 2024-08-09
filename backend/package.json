@@ -35,8 +35,10 @@
         "cheerio": "^1.0.0-rc.12",
         "dayjs": "^1.11.12",
         "lodash": "^4.17.21",
+        "node-fetch": "^3.3.2",
         "pdf-parse-debugging-disabled": "^1.1.1",
+        "stripe": "^16.7.0",
         "uuid": "^9.0.1",
-        "youtube-transcript-api": "^1.1.2"
+        "youtubei.js": "^10.3.0"
     }
 }

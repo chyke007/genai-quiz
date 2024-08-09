@@ -3,7 +3,7 @@ import {
   publishToTopic,
   getQuestionsFromYoutubeWithBedrock,
   generateSubstringsYoutube,
-  scrapeWebsite
+  getYoutubeTitle
 } from "../../utils/helper.mjs";
 import { ProcessingStages, sourceType } from "../../utils/types.mjs";
 
@@ -21,7 +21,7 @@ export const handler = async (event) => {
     const substrings = generateSubstringsYoutube(value);
 
     const questions = await getQuestionsFromYoutubeWithBedrock(substrings)
-    const title = (await scrapeWebsite(link)).title;
+    const title = (await getYoutubeTitle(link)).title;
 
     await publishToTopic(iotClient, key, res);
 

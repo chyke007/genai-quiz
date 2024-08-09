@@ -3,7 +3,7 @@ import { load } from "cheerio";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import pdf from "pdf-parse-debugging-disabled";
-import TranscriptAPI from "youtube-transcript-api";
+import { Innertube } from "youtubei.js/web";
 import {
   BedrockRuntimeClient,
   InvokeModelCommand,
@@ -29,6 +29,11 @@ const settings = {
   region,
 };
 const bedrock = new BedrockRuntimeClient(settings);
+const youtube = await Innertube.create({
+  lang: "en",
+  location: "US",
+  retrieve_player: false,
+});
 
 export const extractFileName = (key) => {
   let fileName = key.split("/");
@@ -92,28 +97,20 @@ const extractVideoId = (url) => {
 };
 
 export const extractYoutubeTranscript = async (youtubeVideoUrl) => {
-  const transcript = await TranscriptAPI.getTranscript(
-    extractVideoId(youtubeVideoUrl)
-  );
-
-  const maxSeconds = MAX_MINS * 60 * 1000;
-  let totalSeconds = 0;
+  const info = await youtube.getInfo(extractVideoId(youtubeVideoUrl));
+  const transcriptData = await info.getTranscript();
+  const maxMilliSeconds = MAX_MINS * 60 * 1000;
   let extractedTranscript = [];
 
-  for (const entry of transcript) {
-    const entryDuration = entry.duration || 0;
-    totalSeconds += entryDuration;
-
-    if (totalSeconds <= maxSeconds) {
+  transcriptData.transcript.content.body.initial_segments.map((entry) => {
+    const entryDuration = Number(entry.end_ms) || 0;
+    if (entryDuration <= maxMilliSeconds) {
       extractedTranscript.push({
-        duration: entry.duration,
-        offset: entry.start,
-        text: entry.text.replace(/\s+/g, " ").trim(),
+        time: Number(entry.start_time_text.text.split(":")[0]),
+        text: entry.snippet.text.replace(/\s+/g, " ").trim(),
       });
-    } else {
-      break;
-    }
-  }
+    } else return;
+  });
 
   return extractedTranscript;
 };
@@ -155,21 +152,20 @@ export const generateSubstringsPdf = (data) => {
 export const generateSubstringsYoutube = (data) => {
   try {
     const substrings = [];
-
-    let currentOffset = [];
     let currentText = "";
+    let currentTime = [];
 
     for (const item of data) {
-      currentOffset.push(item.offset);
+      currentTime.push(item.time);
       currentText += item.text;
 
       if (currentText.length >= TEXT_QUANTITY) {
         substrings.push({
           text: currentText,
-          mins: Math.round(currentOffset[0] / 60),
+          mins: currentTime[0],
         });
         currentText = "";
-        currentOffset = [];
+        currentTime = [];
       }
     }
 
@@ -177,7 +173,7 @@ export const generateSubstringsYoutube = (data) => {
     if (currentText.length > 0) {
       substrings.push({
         text: currentText.substring(0, TEXT_QUANTITY),
-        mins: Math.round(currentOffset[0] / 60),
+        mins: currentTime[0],
       });
     }
 
@@ -317,33 +313,16 @@ export const getQuestionsFromPdfWithBedrock = async (substrings) => {
 
 export const generateUuid = () => uuidv4();
 
-export const scrapeWebsite = async (url) => {
+export const getYoutubeTitle = async (url) => {
   try {
-    // Make a GET request to the website
-    const response = await axios.get(url);
-
-    // Load the HTML content into cheerio
-    const $ = load(response.data);
-
-    // Remove script elements from the HTML
-    $("script").remove();
-
-    // Extract the content you need
-    const pageTitle = $("title").text(); // Change this based on the HTML structure
-
-    const pageContent = $("body").text();
-
-    // You can store the content in a variable if needed
+    const info = await youtube.getInfo(extractVideoId(url));
     const scrapedContent = {
-      title: pageTitle,
-      text: pageContent,
-      url,
-      // Add more properties as needed
+      title: info.primary_info.title.text
     };
 
     return scrapedContent;
   } catch (error) {
-    console.error("Error while scraping: ", error.message);
+    console.error("Error fetching Youtube title: ", error.message);
     throw error;
   }
 };
@@ -367,11 +346,11 @@ export const fetchFromTableByGS1PK = async (tableName, PK) => {
   try {
     const command = new QueryCommand({
       TableName: tableName,
-      IndexName: 'GS1',
-      KeyConditionExpression: 'GS1PK=:pk',
+      IndexName: "GS1",
+      KeyConditionExpression: "GS1PK=:pk",
       ExpressionAttributeValues: {
-          ":pk": PK
-      }
+        ":pk": PK,
+      },
     });
     return docClient.send(command);
   } catch (e) {
@@ -384,9 +363,9 @@ export const fetchFromTableByPK = async (tableName, PK) => {
   try {
     const command = new QueryCommand({
       TableName: tableName,
-      KeyConditionExpression: 'PK=:pk',
+      KeyConditionExpression: "PK=:pk",
       ExpressionAttributeValues: {
-          ":pk": PK
+        ":pk": PK,
       },
       ConsistentRead: true,
     });
