@@ -21,7 +21,7 @@
 ## Folder Structure
 This project contains source code for a serverless that can be deployed using the serverless framework. It also contains frontend code built using Next.js that can also be easily deployed or run locally. Also added are the architecture diagrams for the project.
 
-- [architecture](https://github.com/chyke007/genai-quiz/tree/main/facial-vote-architecture) - Contains architectural diagram and workflows for the application
+- [architecture](https://github.com/chyke007/genai-quiz/tree/main/architecture) - Contains architectural diagram and workflows for the application
 - [backend](https://github.com/chyke007/genai-quiz/tree/main/backend) - Contains the backend/serverless portion of the application built using the serverless framework
 - [frontend](https://github.com/chyke007/genai-quiz/tree/main/frontend) - Contains the frontend of the application built using Next.js
 
@@ -67,7 +67,13 @@ $ cd frontend && npm i && npm run dev
 ```
 ## Architecture
 
-Coming soon...
+### Full flow
+
+<img src="https://github.com/chyke007/genai-quiz/blob/main/architecture/full-architecture.png" alt="Full Flow" width="700" />
+ 
+### Question Generation Flow
+
+<img src="https://github.com/chyke007/genai-quiz/blob/main/architecture/question-generation-architecture.png" alt="Question Generation Flow" width="700" />
 
 
 ## Documentation

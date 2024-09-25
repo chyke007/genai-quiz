@@ -1,5 +1,3 @@
-import axios from "axios";
-import { load } from "cheerio";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import pdf from "pdf-parse-debugging-disabled";
@@ -235,7 +233,7 @@ const formatBedrockResponse = (
   let obj;
   eval("obj=" + matches);
   let correct = 1 + obj.options.findIndex((x) => x === obj.correctAnswerString);
-  // const questionSection =
+
   return {
     id: String(index + 1),
     question:

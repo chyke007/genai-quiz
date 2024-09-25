@@ -7,10 +7,8 @@
 
 import { mqtt5, iot } from "aws-iot-device-sdk-v2";
 import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
-// import { CognitoIdentityCredentials } from "aws-sdk";
 import { once } from "events";
 import config from "@/utils/config";
-import { toUtf8 } from "@aws-sdk/util-utf8-browser";
 import { CredentialType } from "./types";
 
 interface AWSCognitoCredentialOptions {

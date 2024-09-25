@@ -54,7 +54,7 @@ export default function QuizPage({ content, id }: PropsWithChildren<any>) {
                 Take Quiz Now
               </h2>
               <p className="flex items-center text-sm font-normal text-gray-500 dark:text-gray-400">
-                Quiz has been generated sucessfull. You can also view the source
+                Quiz has been generated sucessfully. You can also view the source
                 file/link by clicking the View Source button
               </p>
             </div>
